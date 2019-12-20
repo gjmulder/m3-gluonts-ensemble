@@ -192,11 +192,11 @@ process_period <- function(period, m4_data, final_mode) {
 # window_size <-37
 
 # In validation mode we split the training data into training and validation data sets
-validation_mode <- TRUE
+validation_mode <- FALSE
 
 print("!!!! DOES NOT SUPPORT HOURLY AS get_date() RETURNS DATE STRING, NOT 'yyyy-mm-dd HH:MM:SS' !!!!")
 # periods <- as.vector(levels(m4_data[[1]]$period))
-periods <- c("Monthly")
+periods <- c("Daily")
 res <- unlist(lapply(periods, process_period, m4_data, final_mode))
 names(res) <- periods
 print(res)
