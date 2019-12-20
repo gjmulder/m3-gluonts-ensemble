@@ -216,7 +216,9 @@ def score_model(model, model_type, data, season_coeffs):
         temp_dir_path = mkdtemp()
         model.serialize(Path(temp_dir_path))
         model_cpu = Predictor.deserialize(Path(temp_dir_path), ctx=mx.cpu())
+        logger.info("Loaded DeepState model")
         forecast_it, ts_it = make_evaluation_predictions(dataset=gluon_test, predictor=model_cpu, num_samples=1)
+        logger.info("Evaluated DeepState model")
         
     forecasts = list(forecast_it)
     
@@ -257,11 +259,13 @@ def load_plos_m3_data(path, tcrit, model_type):
     data = {}
     for dataset in ["train", "test"]:
         data[dataset] = []
-        with open("%s/%s/data.json" % (path, dataset)) as fp:
+        fname = "%s/%s/data.json" % (path, dataset)
+        logger.info("Reading data from: %s" % fname)
+        with open(fname) as fp:
             for line in fp:
                ts_data = loads(line)               
                data[dataset].append(ts_data)
-               
+    logger.info("Loaded %d time series" % len(data["train"]))
     season_coeffs = []
     for j in range(len(data["train"])):        
         ts_train = data["train"][j]["target"]
@@ -314,40 +318,33 @@ def forecast(cfg):
     np.random.seed(rand_seed)
 
     # Load training data
-    train_data, train_season_coeffs  = load_plos_m3_data("/var/tmp/m3_monthly", cfg['tcrit'], cfg['model']['type'])
+    train_data, train_season_coeffs  = load_plos_m3_data("/var/tmp/m4_monthly", cfg['tcrit'], cfg['model']['type'])
     gluon_train = ListDataset(train_data['train'].copy(), freq=freq_pd)
     
-#    trainer=Trainer(
-#        epochs=3,
-#        hybridize=False,
-#    )
-
     trainer=Trainer(
-        mx.Context("gpu"),
+        epochs=3,
         hybridize=False,
-        epochs=cfg['trainer']['max_epochs'],
-        num_batches_per_epoch=cfg['trainer']['num_batches_per_epoch'],
-        batch_size=cfg['trainer']['batch_size'],
-        patience=cfg['trainer']['patience'],
-        
-        learning_rate=cfg['trainer']['learning_rate'],
-        learning_rate_decay_factor=cfg['trainer']['learning_rate_decay_factor'],
-        minimum_learning_rate=cfg['trainer']['minimum_learning_rate'],
-        weight_decay=cfg['trainer']['weight_decay'],
     )
+
+#    trainer=Trainer(
+#        mx.Context("gpu"),
+#        hybridize=False,
+#        epochs=cfg['trainer']['max_epochs'],
+#        num_batches_per_epoch=cfg['trainer']['num_batches_per_epoch'],
+#        batch_size=cfg['trainer']['batch_size'],
+#        patience=cfg['trainer']['patience'],
+#        
+#        learning_rate=cfg['trainer']['learning_rate'],
+#        learning_rate_decay_factor=cfg['trainer']['learning_rate_decay_factor'],
+#        minimum_learning_rate=cfg['trainer']['minimum_learning_rate'],
+#        weight_decay=cfg['trainer']['weight_decay'],
+#    )
 
     if cfg['box_cox']:
         distr_output=distribution.TransformedDistributionOutput(distribution.GaussianOutput(),
                                                                     [distribution.InverseBoxCoxTransformOutput(lb_obs=-1.0E-5)])
     else:
         distr_output=distribution.StudentTOutput()
-    
-#    # Disable seasonal lags if we're deseasonalising
-#    if cfg['tcrit'] > 0.0:
-#        lags_seq = [1, 2, 3, 4, 5, 6, 7]
-#    else:
-#        lags_seq = None
-#    lags_seq = [1, 2, 3, 4, 12, 13, 24]
         
     if cfg['model']['type'] == 'SimpleFeedForwardEstimator':
         estimator = SimpleFeedForwardEstimator(
@@ -387,7 +384,8 @@ def forecast(cfg):
     if cfg['model']['type'] == 'WaveNetEstimator':            
         estimator = WaveNetEstimator(
             freq=freq_pd,
-            prediction_length=prediction_length,        
+            prediction_length=prediction_length,
+            cardinality=[len(train_data['train']), 6],
             embedding_dimension=cfg['model']['embedding_dimension'],
             num_bins=cfg['model']['num_bins'],        
             n_residue=cfg['model']['n_residue'],
@@ -407,7 +405,8 @@ def forecast(cfg):
         estimator = TransformerEstimator(
             freq=freq_pd,
             prediction_length=prediction_length,
-#            lags_seq=lags_seq,
+            use_feat_static_cat=cfg['model']['tf_use_xreg'],
+            cardinality=cardinality,
             model_dim=cfg['model']['model_dim_heads'][0], 
             inner_ff_dim_scale=cfg['model']['inner_ff_dim_scale'],
             pre_seq=cfg['model']['pre_seq'], 
@@ -415,8 +414,6 @@ def forecast(cfg):
             act_type=cfg['model']['tf_act_type'], 
             num_heads=cfg['model']['model_dim_heads'][1], 
             dropout_rate=cfg['model']['trans_dropout_rate'],
-            use_feat_static_cat=cfg['model']['tf_use_xreg'],
-            cardinality=cardinality,
             num_parallel_samples=1,
             trainer=trainer,
             distr_output=distr_output)
@@ -430,13 +427,12 @@ def forecast(cfg):
         estimator = DeepAREstimator(
             freq=freq_pd,
             prediction_length=prediction_length,        
-#            lags_seq=lags_seq,
+            use_feat_static_cat=cfg['model']['da_use_xreg'],
+            cardinality=cardinality,
             cell_type=cfg['model']['da_cell_type'],
             num_cells=cfg['model']['da_num_cells'],
             num_layers=cfg['model']['da_num_layers'],        
             dropout_rate=cfg['model']['da_dropout_rate'],
-            use_feat_static_cat=cfg['model']['da_use_xreg'],
-            cardinality=cardinality,
             num_parallel_samples=1,
             trainer=trainer,
             distr_output=distr_output)
@@ -445,12 +441,12 @@ def forecast(cfg):
         estimator = DeepStateEstimator(
             freq=freq_pd,
             prediction_length=prediction_length,
-            cell_type=cfg['model']['ds_cell_type'],
-            add_trend=cfg['model']['add_trend'],     
-            num_cells=cfg['model']['ds_num_cells'],
-            num_layers=cfg['model']['ds_num_layers'],    
+#            cell_type=cfg['model']['ds_cell_type'],
+#            add_trend=cfg['model']['add_trend'],     
+#            num_cells=cfg['model']['ds_num_cells'],
+#            num_layers=cfg['model']['ds_num_layers'],    
 #            num_periods_to_train=cfg['model']['num_periods_to_train'],    
-            dropout_rate=cfg['model']['ds_dropout_rate'],
+#            dropout_rate=cfg['model']['ds_dropout_rate'],
             use_feat_static_cat=True,
             cardinality=[len(train_data['train']), 6],
             num_parallel_samples=1,
@@ -463,7 +459,7 @@ def forecast(cfg):
     train_errs = score_model(model, cfg['model']['type'], train_data, train_season_coeffs)
     logger.info("Training error: %s" % train_errs)
 
-    test_data, test_season_coeffs = load_plos_m3_data("/var/tmp/m3_monthly_all", cfg['tcrit'], cfg['model']['type'])
+    test_data, test_season_coeffs = load_plos_m3_data("/var/tmp/m4_monthly", cfg['tcrit'], cfg['model']['type'])
     test_errs = score_model(model,  cfg['model']['type'], test_data,  test_season_coeffs)
     logger.info("Testing error: %s" % test_errs)
     
@@ -586,15 +582,15 @@ def call_hyperopt():
                 'da_dropout_rate'            : hp.uniform('da_dropout_rate', dropout_rate['min'], dropout_rate['max']),
             },
 
-            {
-                'type'                       : 'DeepStateEstimator',
-                'ds_cell_type'               : hp.choice('ds_cell_type', ['lstm', 'gru']),
-                'add_trend'                  : hp.choice('add_trend', [True, False]),
-                'ds_num_cells'               : hp.choice('ds_num_cells', [2, 4, 8, 16, 32, 64, 128, 256, 512]),
-                'ds_num_layers'              : hp.choice('ds_num_layers', [1, 2, 3, 4, 5, 7, 9]),
+#            {
+#                'type'                       : 'DeepStateEstimator',
+#                'ds_cell_type'               : hp.choice('ds_cell_type', ['lstm', 'gru']),
+#                'add_trend'                  : hp.choice('add_trend', [True, False]),
+#                'ds_num_cells'               : hp.choice('ds_num_cells', [2, 4, 8, 16, 32, 64, 128, 256, 512]),
+#                'ds_num_layers'              : hp.choice('ds_num_layers', [1, 2, 3, 4, 5, 7, 9]),
 #                'num_periods_to_train'       : hp.choice('num_periods_to_train', [2, 3, 4, 5, 6]),   
-                'ds_dropout_rate'            : hp.uniform('ds_dropout_rate', dropout_rate['min'], dropout_rate['max']),
-            },
+#                'ds_dropout_rate'            : hp.uniform('ds_dropout_rate', dropout_rate['min'], dropout_rate['max']),
+#            },
         ])
     }
 
