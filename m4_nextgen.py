@@ -321,24 +321,23 @@ def forecast(cfg):
     train_data, train_season_coeffs  = load_plos_m3_data("/var/tmp/m4_monthly", cfg['tcrit'], cfg['model']['type'])
     gluon_train = ListDataset(train_data['train'].copy(), freq=freq_pd)
     
-    trainer=Trainer(
-        epochs=3,
-        hybridize=False,
-    )
-
 #    trainer=Trainer(
-#        mx.Context("gpu"),
+#        epochs=3,
 #        hybridize=False,
-#        epochs=cfg['trainer']['max_epochs'],
-#        num_batches_per_epoch=cfg['trainer']['num_batches_per_epoch'],
-#        batch_size=cfg['trainer']['batch_size'],
-#        patience=cfg['trainer']['patience'],
-#        
-#        learning_rate=cfg['trainer']['learning_rate'],
-#        learning_rate_decay_factor=cfg['trainer']['learning_rate_decay_factor'],
-#        minimum_learning_rate=cfg['trainer']['minimum_learning_rate'],
-#        weight_decay=cfg['trainer']['weight_decay'],
 #    )
+
+    trainer=Trainer(
+        mx.Context("gpu"),
+        hybridize=False,
+        epochs=cfg['trainer']['max_epochs'],
+        num_batches_per_epoch=cfg['trainer']['num_batches_per_epoch'],
+        batch_size=cfg['trainer']['batch_size'],
+        patience=cfg['trainer']['patience'],
+        learning_rate=cfg['trainer']['learning_rate'],
+        learning_rate_decay_factor=cfg['trainer']['learning_rate_decay_factor'],
+        minimum_learning_rate=cfg['trainer']['minimum_learning_rate'],
+        weight_decay=cfg['trainer']['weight_decay'],
+    )
 
     if cfg['box_cox']:
         distr_output=distribution.TransformedDistributionOutput(distribution.GaussianOutput(),
