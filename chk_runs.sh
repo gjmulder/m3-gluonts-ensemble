@@ -6,6 +6,7 @@ MD5_OLD=`cat /tmp/run_old | md5sum`
 MD5_NEW=`cat /tmp/run_new | md5sum`
 if [ "$MD5_NEW" != "$MD5_OLD" ]
 then
-	cat /tmp/run_new
+	SUBJECT=`awk '/MASE/ {printf("%.3f "), $NF}' /tmp/run_new`
+	mail -s "HyperOpt: $SUBJECT" -a "From: mulder.g@unic.ac.cy" gjmulder@gmail.com < /tmp/run_new
+	mv /tmp/run_new /tmp/run_old
 fi
-mv /tmp/run_new /tmp/run_old
