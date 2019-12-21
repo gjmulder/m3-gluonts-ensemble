@@ -12,11 +12,11 @@ echo "model.type, train.MASE, train.sMAPE, test.MASE, test.sMAPE, experiment, st
 for DB in $1
 do
 	echo "db.jobs.find({\"result.status\" : \"$STATUS\"}).toArray()" | mongo --host heika $DB | awk '
-/"mase"/ {
+/"MASE"/ {
 	printf("%10.5f,", $NF)
 }
 
-/"smape"/ {
+/"sMAPE"/ {
 	printf("%10.5f,", $NF)
 }
 
