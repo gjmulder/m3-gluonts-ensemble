@@ -1,8 +1,16 @@
 #!/bin/sh
 
-STATUS="ok"
 
-DBS=`echo "show dbs" | mongo --host heika | awk '/GB$/ {print $1}' | egrep -v "^(admin|config|local)"`
+if [ $# -eq 0 ]
+then
+STATUS="ok"
+	DBS=`echo "show dbs" | mongo --host heika | awk '/GB$/ {print $1}' | egrep -v "^(admin|config|local)"`
+else
+	STATUS="$1"
+	shift
+	DBS=$*
+fi
+
 for DB in $DBS
 do
 	echo "DB name: $DB"
