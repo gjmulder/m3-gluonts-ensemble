@@ -6,6 +6,6 @@ MD5_OLD=`cat /tmp/run_old | md5sum`
 MD5_NEW=`cat /tmp/run_new | md5sum`
 if [ "$MD5_NEW" != "$MD5_OLD" ]
 then
-	echo cat /tmp/run_new
+	cat /tmp/run_new
 fi
 mv /tmp/run_new /tmp/run_old
