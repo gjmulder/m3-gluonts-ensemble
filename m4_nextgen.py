@@ -90,8 +90,7 @@ def load_plos_m3_data(path, model_type):
                # Remove static features if not supported by model
                if model_type in ['SimpleFeedForwardEstimator',
                                  'DeepFactorEstimator',
-                                 'GaussianProcessEstimator',
-                                 'WaveNetEstimator']:
+                                 'GaussianProcessEstimator']:
                    del(ts_data['feat_static_cat'])
                    
                data[dataset].append(ts_data)
