@@ -319,13 +319,13 @@ def call_hyperopt():
         },
 
         'model' : hp.choice('model', [
-            {
-                'type'                       : 'SimpleFeedForwardEstimator',
-                'num_hidden_dimensions'      : hp.choice('num_hidden_dimensions', [[2], [4], [8], [16], [32], [64], [128],
-                                                                                   [2, 2], [4, 2], [8, 8], [8, 4], [16, 16], [16, 8], [32, 16], [64, 32],
-                                                                                   [64, 32, 16], [128, 64, 32]]),
-            },
-
+#            {
+#                'type'                       : 'SimpleFeedForwardEstimator',
+#                'num_hidden_dimensions'      : hp.choice('num_hidden_dimensions', [[2], [4], [8], [16], [32], [64], [128],
+#                                                                                   [2, 2], [4, 2], [8, 8], [8, 4], [16, 16], [16, 8], [32, 16], [64, 32],
+#                                                                                   [64, 32, 16], [128, 64, 32]]),
+#            },
+#
 #            {
 #                'type'                       : 'DeepFactorEstimator',
 #                'num_hidden_global'          : hp.choice('num_hidden_global', [2, 4, 8, 16, 32, 64, 128, 256]),
@@ -334,38 +334,38 @@ def call_hyperopt():
 #                'num_hidden_local'           : hp.choice('num_hidden_local', [2, 4, 8]),
 #                'num_layers_local'           : hp.choice('num_layers_local', [1, 2, 3]),
 #            },
-                    
+#                    
 #            {
 #                'type'                       : 'GaussianProcessEstimator',
 ##                'rbf_kernel_output'          : hp.choice('rbf_kernel_output', [True, False]),
 #                'max_iter_jitter'            : hp.choice('max_iter_jitter', [4, 8, 16, 32]),
 #                'sample_noise'               : hp.choice('sample_noise', [True, False]),
 #            },
-                    
-            {
-                'type'                       : 'WaveNetEstimator',
-                'embedding_dimension'        : hp.choice('embedding_dimension', [2, 4, 8, 16, 32, 64]),
-                'num_bins'                   : hp.choice('num_bins', [256, 512, 1024, 2048]),
-                'n_residue'                  : hp.choice('n_residue', [22, 23, 24, 25, 26]),
-                'n_skip'                     : hp.choice('n_skip', [4, 8, 16, 32, 64, 128]),
-                'dilation_depth'             : hp.choice('dilation_depth', [None, 1, 2, 3, 4, 5, 7, 9]),
-                'n_stacks'                   : hp.choice('n_stacks', [1, 2, 3]),
-                'wn_act_type'                : hp.choice('wn_act_type', ['elu', 'relu', 'sigmoid', 'tanh', 'softrelu', 'softsign']),
-            },
-                   
-            {
-                'type'                       : 'TransformerEstimator',
-                'tf_use_xreg'                : hp.choice('tf_use_xreg', [True, False]),
-                'model_dim_heads'            : hp.choice('model_dim_heads', [[2, 2], [4, 2], [8, 2], [16, 2], [32, 2], [64, 2],
-                                                                             [4, 4], [8, 4], [16, 4], [32, 4], [64, 4],
-                                                                             [8, 8], [16, 8], [32, 8], [64, 8],
-                                                                             [16, 16], [32, 16], [64, 16]]),
-                'inner_ff_dim_scale'         : hp.choice('inner_ff_dim_scale', [2, 3, 4, 5]),
-                'pre_seq'                    : hp.choice('pre_seq', ['d', 'n', 'dn', 'nd']),
-                'post_seq'                   : hp.choice('post_seq', ['d', 'r', 'n', 'dn', 'nd', 'rn', 'nr', 'dr', 'rd', 'drn', 'dnr', 'rdn', 'rnd', 'nrd', 'ndr']),
-                'tf_act_type'                : hp.choice('tf_act_type', ['relu', 'sigmoid', 'tanh', 'softrelu', 'softsign']),               
-                'trans_dropout_rate'         : hp.uniform('trans_dropout_rate', dropout_rate['min'], dropout_rate['max']),
-            },
+#                    
+#            {
+#                'type'                       : 'WaveNetEstimator',
+#                'embedding_dimension'        : hp.choice('embedding_dimension', [2, 4, 8, 16, 32, 64]),
+#                'num_bins'                   : hp.choice('num_bins', [256, 512, 1024, 2048]),
+#                'n_residue'                  : hp.choice('n_residue', [22, 23, 24, 25, 26]),
+#                'n_skip'                     : hp.choice('n_skip', [4, 8, 16, 32, 64, 128]),
+#                'dilation_depth'             : hp.choice('dilation_depth', [None, 1, 2, 3, 4, 5, 7, 9]),
+#                'n_stacks'                   : hp.choice('n_stacks', [1, 2, 3]),
+#                'wn_act_type'                : hp.choice('wn_act_type', ['elu', 'relu', 'sigmoid', 'tanh', 'softrelu', 'softsign']),
+#            },
+#                   
+#            {
+#                'type'                       : 'TransformerEstimator',
+#                'tf_use_xreg'                : hp.choice('tf_use_xreg', [True, False]),
+#                'model_dim_heads'            : hp.choice('model_dim_heads', [[2, 2], [4, 2], [8, 2], [16, 2], [32, 2], [64, 2],
+#                                                                             [4, 4], [8, 4], [16, 4], [32, 4], [64, 4],
+#                                                                             [8, 8], [16, 8], [32, 8], [64, 8],
+#                                                                             [16, 16], [32, 16], [64, 16]]),
+#                'inner_ff_dim_scale'         : hp.choice('inner_ff_dim_scale', [2, 3, 4, 5]),
+#                'pre_seq'                    : hp.choice('pre_seq', ['d', 'n', 'dn', 'nd']),
+#                'post_seq'                   : hp.choice('post_seq', ['d', 'r', 'n', 'dn', 'nd', 'rn', 'nr', 'dr', 'rd', 'drn', 'dnr', 'rdn', 'rnd', 'nrd', 'ndr']),
+#                'tf_act_type'                : hp.choice('tf_act_type', ['relu', 'sigmoid', 'tanh', 'softrelu', 'softsign']),               
+#                'trans_dropout_rate'         : hp.uniform('trans_dropout_rate', dropout_rate['min'], dropout_rate['max']),
+#            },
 
             {
                 'type'                       : 'DeepAREstimator',
