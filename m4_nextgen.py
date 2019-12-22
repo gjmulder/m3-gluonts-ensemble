@@ -326,21 +326,21 @@ def call_hyperopt():
                                                                                    [64, 32, 16], [128, 64, 32]]),
             },
 
-            {
-                'type'                       : 'DeepFactorEstimator',
-                'num_hidden_global'          : hp.choice('num_hidden_global', [2, 4, 8, 16, 32, 64, 128, 256]),
-                'num_layers_global'          : hp.choice('num_layers_global', [1, 2, 3]),
-                'num_factors'                : hp.choice('num_factors', [2, 4, 8, 16, 32]),
-                'num_hidden_local'           : hp.choice('num_hidden_local', [2, 4, 8]),
-                'num_layers_local'           : hp.choice('num_layers_local', [1, 2, 3]),
-            },
+#            {
+#                'type'                       : 'DeepFactorEstimator',
+#                'num_hidden_global'          : hp.choice('num_hidden_global', [2, 4, 8, 16, 32, 64, 128, 256]),
+#                'num_layers_global'          : hp.choice('num_layers_global', [1, 2, 3]),
+#                'num_factors'                : hp.choice('num_factors', [2, 4, 8, 16, 32]),
+#                'num_hidden_local'           : hp.choice('num_hidden_local', [2, 4, 8]),
+#                'num_layers_local'           : hp.choice('num_layers_local', [1, 2, 3]),
+#            },
                     
-            {
-                'type'                       : 'GaussianProcessEstimator',
-#                'rbf_kernel_output'          : hp.choice('rbf_kernel_output', [True, False]),
-                'max_iter_jitter'            : hp.choice('max_iter_jitter', [4, 8, 16, 32]),
-                'sample_noise'               : hp.choice('sample_noise', [True, False]),
-            },
+#            {
+#                'type'                       : 'GaussianProcessEstimator',
+##                'rbf_kernel_output'          : hp.choice('rbf_kernel_output', [True, False]),
+#                'max_iter_jitter'            : hp.choice('max_iter_jitter', [4, 8, 16, 32]),
+#                'sample_noise'               : hp.choice('sample_noise', [True, False]),
+#            },
                     
             {
                 'type'                       : 'WaveNetEstimator',

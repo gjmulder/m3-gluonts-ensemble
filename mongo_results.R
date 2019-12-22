@@ -4,7 +4,7 @@ library(ggpubr)
 # library(tidyquant)
 
 mongo_data <-
-  read_csv("mongo_results_plos1_m3.csv") %>%
+  read_csv("mongo_results.csv") %>%
   mutate(run.num = row_number())
 
 min_err <- min(mongo_data$train.MASE) * 5 / 6
@@ -30,7 +30,7 @@ mongo_plot_data <-
 mongo_plot_mase_decimate <-
   mongo_plot_data %>%
   arrange(test.MASE) %>%
-  mutate(ceiling.test.MASE10 = ceiling(test.MASE * 10)) %>%
+  mutate(ceiling.test.MASE10 = ceiling(test.MASE * 10 / max_err)) %>%
   distinct(model.type.count, ceiling.test.MASE10, .keep_all = TRUE)
 
 top_models <-
@@ -89,7 +89,7 @@ gg_hyperopt_path <-
               slope = 1.0,
               alpha = 0.5) +
   geom_path(size = 0.1,
-            alpha = 0.25) +
+            alpha = 0.5) +
   geom_point(
     data = mongo_plot_mase_decimate,
     mapping = aes(x = train.MASE,
