@@ -255,7 +255,7 @@ def forecast(cfg):
     gluon_train = ListDataset(train_data['train'].copy(), freq=freq_pd)
     gluon_validate = ListDataset(train_data['test'].copy(), freq=freq_pd)
     model = estimator.train(gluon_train, validation_data=gluon_validate)
-    
+#    logger.info("Number of model params = (%s, %s)" % trainer.count_model_params())
     train_errs = score_model(model, cfg['model']['type'], gluon_validate, num_ts)
     logger.info("Training error: %s" % train_errs)
 
@@ -318,17 +318,17 @@ def call_hyperopt():
             'learning_rate_decay_factor' : hp.uniform('learning_rate_decay_factor', 0.10, 0.75),
             'minimum_learning_rate'      : hp.loguniform('minimum_learning_rate', np.log(005e-06), np.log(100e-06)),
             'weight_decay'               : hp.loguniform('weight_decay', np.log(01e-09), np.log(100e-09)),
-            'clip_gradient'              : hp.loguniform('clip_gradient', np.log(0.1), np.log(10.0)),              
+            'clip_gradient'              : hp.uniform('clip_gradient', 1, 10),              
         },
 
         'model' : hp.choice('model', [
-#            {
-#                'type'                       : 'SimpleFeedForwardEstimator',
-#                'num_hidden_dimensions'      : hp.choice('num_hidden_dimensions', [[2], [4], [8], [16], [32], [64], [128],
-#                                                                                   [2, 2], [4, 2], [8, 8], [8, 4], [16, 16], [16, 8], [32, 16], [64, 32],
-#                                                                                   [64, 32, 16], [128, 64, 32]]),
-#            },
-#
+            {
+                'type'                       : 'SimpleFeedForwardEstimator',
+                'num_hidden_dimensions'      : hp.choice('num_hidden_dimensions', [[2], [4], [8], [16], [32], [64], [128],
+                                                                                   [2, 2], [4, 2], [8, 8], [8, 4], [16, 16], [16, 8], [32, 16], [64, 32],
+                                                                                   [64, 32, 16], [128, 64, 32]]),
+            },
+
 #            {
 #                'type'                       : 'DeepFactorEstimator',
 #                'num_hidden_global'          : hp.choice('num_hidden_global', [2, 4, 8, 16, 32, 64, 128, 256]),
@@ -344,17 +344,17 @@ def call_hyperopt():
 #                'max_iter_jitter'            : hp.choice('max_iter_jitter', [4, 8, 16, 32]),
 #                'sample_noise'               : hp.choice('sample_noise', [True, False]),
 #            },
-#                    
-            {
-                'type'                       : 'WaveNetEstimator',
-                'embedding_dimension'        : hp.choice('embedding_dimension', [2, 4, 8, 16, 32, 64]),
-                'num_bins'                   : hp.choice('num_bins', [256, 512, 1024, 2048]),
-                'n_residue'                  : hp.choice('n_residue', [22, 23, 24, 25, 26]),
-                'n_skip'                     : hp.choice('n_skip', [4, 8, 16, 32, 64, 128]),
-                'dilation_depth'             : hp.choice('dilation_depth', [None, 1, 2, 3, 4, 5, 7, 9]),
-                'n_stacks'                   : hp.choice('n_stacks', [1, 2, 3]),
-                'wn_act_type'                : hp.choice('wn_act_type', ['elu', 'relu', 'sigmoid', 'tanh', 'softrelu', 'softsign']),
-            },
+                  
+#            {
+#                'type'                       : 'WaveNetEstimator',
+#                'embedding_dimension'        : hp.choice('embedding_dimension', [2, 4, 8, 16, 32, 64]),
+#                'num_bins'                   : hp.choice('num_bins', [256, 512, 1024, 2048]),
+#                'n_residue'                  : hp.choice('n_residue', [22, 23, 24, 25, 26]),
+#                'n_skip'                     : hp.choice('n_skip', [4, 8, 16, 32, 64, 128]),
+#                'dilation_depth'             : hp.choice('dilation_depth', [None, 1, 2, 3, 4, 5, 7, 9]),
+#                'n_stacks'                   : hp.choice('n_stacks', [1, 2, 3]),
+#                'wn_act_type'                : hp.choice('wn_act_type', ['elu', 'relu', 'sigmoid', 'tanh', 'softrelu', 'softsign']),
+#            },
                    
             {
                 'type'                       : 'TransformerEstimator',
@@ -381,15 +381,15 @@ def call_hyperopt():
                 'da_dropout_rate'            : hp.uniform('da_dropout_rate', dropout_rate['min'], dropout_rate['max']),
             },
 
-#            {
-#                'type'                       : 'DeepStateEstimator',
-#                'ds_cell_type'               : hp.choice('ds_cell_type', ['lstm', 'gru']),
-#                'add_trend'                  : hp.choice('add_trend', [True, False]),
-#                'ds_num_cells'               : hp.choice('ds_num_cells', [2, 4, 8, 16, 32, 64, 128, 256, 512]),
-#                'ds_num_layers'              : hp.choice('ds_num_layers', [1, 2, 3, 4, 5, 7, 9]),
-#                'num_periods_to_train'       : hp.choice('num_periods_to_train', [2, 3, 4, 5, 6]),   
-#                'ds_dropout_rate'            : hp.uniform('ds_dropout_rate', dropout_rate['min'], dropout_rate['max']),
-#            },
+            {
+                'type'                       : 'DeepStateEstimator',
+                'ds_cell_type'               : hp.choice('ds_cell_type', ['lstm', 'gru']),
+                'add_trend'                  : hp.choice('add_trend', [True, False]),
+                'ds_num_cells'               : hp.choice('ds_num_cells', [2, 4, 8, 16, 32, 64, 128, 256, 512]),
+                'ds_num_layers'              : hp.choice('ds_num_layers', [1, 2, 3, 4, 5, 7, 9]),
+                'num_periods_to_train'       : hp.choice('num_periods_to_train', [2, 3, 4, 5, 6]),   
+                'ds_dropout_rate'            : hp.uniform('ds_dropout_rate', dropout_rate['min'], dropout_rate['max']),
+            },
         ])
     }
                             
