@@ -120,7 +120,7 @@ def forecast(cfg):
     num_ts = len(train_data['train'])
     
 #    trainer=Trainer(
-#        epochs=10,
+#        epochs=3,
 #        hybridize=False,
 #    )
 
@@ -255,7 +255,6 @@ def forecast(cfg):
     gluon_train = ListDataset(train_data['train'].copy(), freq=freq_pd)
     gluon_validate = ListDataset(train_data['test'].copy(), freq=freq_pd)
     model = estimator.train(gluon_train, validation_data=gluon_validate)
-#    logger.info("Number of model params = (%s, %s)" % trainer.count_model_params())
     train_errs = score_model(model, cfg['model']['type'], gluon_validate, num_ts)
     logger.info("Training error: %s" % train_errs)
 
@@ -345,16 +344,16 @@ def call_hyperopt():
 #                'sample_noise'               : hp.choice('sample_noise', [True, False]),
 #            },
                   
-#            {
-#                'type'                       : 'WaveNetEstimator',
-#                'embedding_dimension'        : hp.choice('embedding_dimension', [2, 4, 8, 16, 32, 64]),
-#                'num_bins'                   : hp.choice('num_bins', [256, 512, 1024, 2048]),
-#                'n_residue'                  : hp.choice('n_residue', [22, 23, 24, 25, 26]),
-#                'n_skip'                     : hp.choice('n_skip', [4, 8, 16, 32, 64, 128]),
-#                'dilation_depth'             : hp.choice('dilation_depth', [None, 1, 2, 3, 4, 5, 7, 9]),
-#                'n_stacks'                   : hp.choice('n_stacks', [1, 2, 3]),
-#                'wn_act_type'                : hp.choice('wn_act_type', ['elu', 'relu', 'sigmoid', 'tanh', 'softrelu', 'softsign']),
-#            },
+            {
+                'type'                       : 'WaveNetEstimator',
+                'embedding_dimension'        : hp.choice('embedding_dimension', [2, 4, 8, 16, 32, 64]),
+                'num_bins'                   : hp.choice('num_bins', [256, 512, 1024, 2048]),
+                'n_residue'                  : hp.choice('n_residue', [22, 23, 24, 25, 26]),
+                'n_skip'                     : hp.choice('n_skip', [4, 8, 16, 32, 64, 128]),
+                'dilation_depth'             : hp.choice('dilation_depth', [None, 1, 2, 3, 4, 5, 7, 9]),
+                'n_stacks'                   : hp.choice('n_stacks', [1, 2, 3]),
+                'wn_act_type'                : hp.choice('wn_act_type', ['elu', 'relu', 'sigmoid', 'tanh', 'softrelu', 'softsign']),
+            },
                    
             {
                 'type'                       : 'TransformerEstimator',
@@ -381,15 +380,15 @@ def call_hyperopt():
                 'da_dropout_rate'            : hp.uniform('da_dropout_rate', dropout_rate['min'], dropout_rate['max']),
             },
 
-            {
-                'type'                       : 'DeepStateEstimator',
-                'ds_cell_type'               : hp.choice('ds_cell_type', ['lstm', 'gru']),
-                'add_trend'                  : hp.choice('add_trend', [True, False]),
-                'ds_num_cells'               : hp.choice('ds_num_cells', [2, 4, 8, 16, 32, 64, 128, 256, 512]),
-                'ds_num_layers'              : hp.choice('ds_num_layers', [1, 2, 3, 4, 5, 7, 9]),
-                'num_periods_to_train'       : hp.choice('num_periods_to_train', [2, 3, 4, 5, 6]),   
-                'ds_dropout_rate'            : hp.uniform('ds_dropout_rate', dropout_rate['min'], dropout_rate['max']),
-            },
+#            {
+#                'type'                       : 'DeepStateEstimator',
+#                'ds_cell_type'               : hp.choice('ds_cell_type', ['lstm', 'gru']),
+#                'add_trend'                  : hp.choice('add_trend', [True, False]),
+#                'ds_num_cells'               : hp.choice('ds_num_cells', [2, 4, 8, 16, 32, 64, 128, 256, 512]),
+#                'ds_num_layers'              : hp.choice('ds_num_layers', [1, 2, 3, 4, 5, 7, 9]),
+#                'num_periods_to_train'       : hp.choice('num_periods_to_train', [2, 3, 4, 5, 6]),   
+#                'ds_dropout_rate'            : hp.uniform('ds_dropout_rate', dropout_rate['min'], dropout_rate['max']),
+#            },
         ])
     }
                             

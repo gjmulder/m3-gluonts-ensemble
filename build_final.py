@@ -45,7 +45,7 @@ if __name__ == "__main__":
             "minimum_learning_rate" : 0.000001857482099265628,
             "num_batches_per_epoch" : 80,
             "patience" : 80,
-            "weight_decay" : 8.213239578665893e-8
+            "weight_decay" : 8.213239578665893e-8,
         }
     }
             

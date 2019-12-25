@@ -2,6 +2,7 @@
 # library(tsibble)
 # library(parallel)
 # library(anytime)
+# library(xts)
 
 library(M4comp2018)
 library(lubridate)
@@ -35,68 +36,68 @@ if (is.na(prop_tt)) {
   m4_data <- sample(M4, prop_tt * length(M4))
 }
 
-# # Process m4-info start dates
-# m4_info_df <- read_csv("M4-info.csv")
-#
-# # "1750-01-01 00:00:00"
-# fix_start <- function(date_str) {
-#   # 18th Century
-#   if (nchar(date_str) == 19) {
-#     return(date_str)
-#   }
-#
-#   day_str <- substr(date_str, 1, 2)
-#   month_str <- substr(date_str, 4, 5)
-#   year_str <- substr(date_str, 7, 8)
-#
-#   if (nchar(date_str) == 13) {
-#     # Single digit hour
-#     hour_str <- paste0("0", substr(date_str, 10, 10))
-#     min_str <- substr(date_str, 12, 13)
-#     # Double digit hour
-#   } else {
-#     hour_str <- substr(date_str, 10, 11)
-#     min_str <- substr(date_str, 13, 14)
-#   }
-#   # print(paste(day_str, month_str, year_str, hour_str, min_str))
-#
-#   if (as.integer(year_str) > 18) {
-#     # 19th Century
-#     return(
-#       paste0(
-#         "19",
-#         year_str,
-#         "-",
-#         month_str,
-#         "-",
-#         day_str,
-#         " ",
-#         hour_str,
-#         ":",
-#         min_str,
-#         ":00"
-#       )
-#     )
-#   } else {
-#     # 20th Century
-#     return(
-#       paste0(
-#         "20",
-#         year_str,
-#         "-",
-#         month_str,
-#         "-",
-#         day_str,
-#         " ",
-#         hour_str,
-#         ":",
-#         min_str,
-#         ":00"
-#       )
-#     )
-#   }
-# }
-#
+# Process m4-info start dates
+m4_info_df <- read_csv("M4-info.csv")
+
+# "1750-01-01 00:00:00"
+fix_start <- function(date_str) {
+  # 18th Century
+  if (nchar(date_str) == 19) {
+    return(date_str)
+  }
+
+  day_str <- substr(date_str, 1, 2)
+  month_str <- substr(date_str, 4, 5)
+  year_str <- substr(date_str, 7, 8)
+
+  if (nchar(date_str) == 13) {
+    # Single digit hour
+    hour_str <- paste0("0", substr(date_str, 10, 10))
+    min_str <- substr(date_str, 12, 13)
+    # Double digit hour
+  } else {
+    hour_str <- substr(date_str, 10, 11)
+    min_str <- substr(date_str, 13, 14)
+  }
+  # print(paste(day_str, month_str, year_str, hour_str, min_str))
+
+  if (as.integer(year_str) > 18) {
+    # 19th Century
+    return(
+      paste0(
+        "19",
+        year_str,
+        "-",
+        month_str,
+        "-",
+        day_str,
+        " ",
+        hour_str,
+        ":",
+        min_str,
+        ":00"
+      )
+    )
+  } else {
+    # 20th Century
+    return(
+      paste0(
+        "20",
+        year_str,
+        "-",
+        month_str,
+        "-",
+        day_str,
+        " ",
+        hour_str,
+        ":",
+        min_str,
+        ":00"
+      )
+    )
+  }
+}
+
 # get_date <- function(tt, offset) {
 #   iso_date <- date_decimal(as.numeric(time(tt)[offset]))
 #   # print(substring(iso_date, 1, 10))
@@ -104,11 +105,12 @@ if (is.na(prop_tt)) {
 #   return (substring(iso_date, 1, 10))
 # }
 
-tt_to_json <- function(idx, tt_list, type_list) {
-  print(min(tt_list[[idx]]))
+tt_to_json <- function(idx, tt_list, type_list, start_date_list) {
+  fixed_start_date <- fix_start(start_date_list[[idx]])
+  # print(paste(start_date_list[[idx]], fixed_start_date))
   json <- (paste0(toJSON(
     list(
-      start = "1750-01-01 00:00:00",
+      start = fixed_start_date,
       target = tt_list[[idx]],
       feat_static_cat = c(idx, as.numeric(type_list[[idx]]))
       # feat_dynamic_real = matrix(rexp(10 * length(tt_list[[idx]])), ncol =
@@ -176,8 +178,12 @@ process_period <- function(period, m4_data, final_mode) {
     lapply(m4_period_data, function(tt)
       return(tt$h))
 
+  m4_start_date <-
+    lapply(1:length(m4_st), function(idx)
+      return(m4_info_df$StartingDate[m4_info_df$M4id == m4_st[[idx]]]))
+
   ###########################################################################
-  # Create tt depending on final_mode ####
+  # Create time series depending on final_mode ####
 
   if (validation_mode) {
     dirname <-
@@ -222,7 +228,8 @@ process_period <- function(period, m4_data, final_mode) {
     lapply(1:length(m4_train),
            tt_to_json,
            m4_train,
-           m4_type)
+           m4_type,
+           m4_start_date)
   dir.create(paste0(dirname, "train"))
   sink(paste0(dirname, "train/data.json"))
   lapply(json, cat)
@@ -232,7 +239,8 @@ process_period <- function(period, m4_data, final_mode) {
     lapply(1:length(m4_test),
            tt_to_json,
            m4_test,
-           m4_type)
+           m4_type,
+           m4_start_date)
   dir.create(paste0(dirname, "test"))
   sink(paste0(dirname, "test/data.json"))
   lapply(json, cat)
