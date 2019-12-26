@@ -144,7 +144,7 @@ tt_to_json <- function(idx, tt_list, type_list, start_date_list) {
 #     return(df)
 # }
 
-process_period <- function(period, m4_data, final_mode) {
+process_period <- function(period, m4_data, validation_mode) {
   print(period)
   m4_period_data <- keep(m4_data, function(tt) tt$period == period)
 
@@ -183,7 +183,7 @@ process_period <- function(period, m4_data, final_mode) {
       return(m4_info_df$StartingDate[m4_info_df$M4id == m4_st[[idx]]]))
 
   ###########################################################################
-  # Create time series depending on final_mode ####
+  # Create time series depending on validation_mode ####
 
   if (validation_mode) {
     dirname <-
@@ -269,8 +269,8 @@ validation_mode <- FALSE
 
 # print("!!!! DOES NOT SUPPORT HOURLY AS get_date() RETURNS DATE STRING, NOT 'yyyy-mm-dd HH:MM:SS' !!!!")
 # periods <- as.vector(levels(m4_data[[1]]$period))
-periods <- c("Daily")
-res <- unlist(lapply(periods, process_period, m4_data, final_mode))
+periods <- c("Monthly")
+res <- unlist(lapply(periods, process_period, m4_data, validation_mode))
 names(res) <- periods
 print(res)
 print(sum(res))
