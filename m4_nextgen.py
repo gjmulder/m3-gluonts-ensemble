@@ -50,32 +50,30 @@ freq_pd = "D"
 freq = 7
 prediction_length = 14
 
-def score_model(model, model_type, data):
+def score_model(model, model_type, gluon_test_data, num_ts):
     import mxnet as mx
-    from gluonts.dataset.common import ListDataset
     from gluonts.evaluation.backtest import make_evaluation_predictions #, backtest_metrics
     from gluonts.evaluation import Evaluator
     from gluonts.model.predictor import Predictor
     from tempfile import mkdtemp
     from pathlib import Path
-
-    gluon_test = ListDataset(data['test'].copy(), freq=freq_pd)    
+ 
     
     if model_type != "DeepStateEstimator":
-        forecast_it, ts_it = make_evaluation_predictions(dataset=gluon_test, predictor=model, num_samples=1)
+        forecast_it, ts_it = make_evaluation_predictions(dataset=gluon_test_data, predictor=model, num_samples=1)
     else:
         temp_dir_path = mkdtemp()
         model.serialize(Path(temp_dir_path))
         model_cpu = Predictor.deserialize(Path(temp_dir_path), ctx=mx.cpu())
         logger.info("Loaded DeepState model")
-        forecast_it, ts_it = make_evaluation_predictions(dataset=gluon_test, predictor=model_cpu, num_samples=1)
+        forecast_it, ts_it = make_evaluation_predictions(dataset=gluon_test_data, predictor=model_cpu, num_samples=1)
         logger.info("Evaluated DeepState model")
 
-    agg_metrics, _ = Evaluator()(ts_it, forecast_it, num_series=len(data['test']))
+    agg_metrics, _ = Evaluator()(ts_it, forecast_it, num_series=num_ts)
     
     return agg_metrics
 
-def load_plos_m3_data(path, model_type):
+def load_data(path, model_type):
     from json import loads
     
     data = {}
@@ -118,8 +116,8 @@ def forecast(cfg):
     np.random.seed(rand_seed)
 
     # Load training data
-    train_data  = load_plos_m3_data("/var/tmp/%s" % dataset_name, cfg['model']['type'])
-    gluon_train = ListDataset(train_data['train'].copy(), freq=freq_pd)
+    train_data  = load_data("/var/tmp/%s" % dataset_name, cfg['model']['type'])
+    num_ts = len(train_data['train'])
     
 #    trainer=Trainer(
 #        epochs=3,
@@ -137,6 +135,7 @@ def forecast(cfg):
         learning_rate=cfg['trainer']['learning_rate'],
         learning_rate_decay_factor=cfg['trainer']['learning_rate_decay_factor'],
         minimum_learning_rate=cfg['trainer']['minimum_learning_rate'],
+        clip_gradient=cfg['trainer']['clip_gradient'],
         weight_decay=cfg['trainer']['weight_decay'],
     )
 
@@ -175,7 +174,7 @@ def forecast(cfg):
         estimator = GaussianProcessEstimator(
             freq=freq_pd,
             prediction_length=prediction_length,
-            cardinality=len(train_data['train']),
+            cardinality=num_ts,
             max_iter_jitter=cfg['model']['max_iter_jitter'],
             sample_noise=cfg['model']['sample_noise'],
             num_parallel_samples=1,
@@ -185,7 +184,7 @@ def forecast(cfg):
         estimator = WaveNetEstimator(
             freq=freq_pd,
             prediction_length=prediction_length,
-            cardinality=[len(train_data['train']), 6],
+            cardinality=[num_ts, 6],
             embedding_dimension=cfg['model']['embedding_dimension'],
             num_bins=cfg['model']['num_bins'],        
             n_residue=cfg['model']['n_residue'],
@@ -198,7 +197,7 @@ def forecast(cfg):
                  
     if cfg['model']['type'] == 'TransformerEstimator':
         if cfg['model']['tf_use_xreg']:
-            cardinality=[len(train_data['train']), 6]
+            cardinality=[num_ts, 6]
         else:
             cardinality=None
             
@@ -220,7 +219,7 @@ def forecast(cfg):
 
     if cfg['model']['type'] == 'DeepAREstimator':
         if cfg['model']['da_use_xreg']:
-            cardinality=[len(train_data['train']), 6]
+            cardinality=[num_ts, 6]
         else:
             cardinality=None
             
@@ -248,23 +247,25 @@ def forecast(cfg):
 #            num_periods_to_train=cfg['model']['num_periods_to_train'],    
 #            dropout_rate=cfg['model']['ds_dropout_rate'],
             use_feat_static_cat=True,
-            cardinality=[len(train_data['train']), 6],
+            cardinality=[num_ts, 6],
             num_parallel_samples=1,
             trainer=trainer)
-                    
-    logger.info("Fitting: %s" % estimator)
-    model = estimator.train(gluon_train)
     
-    train_errs = score_model(model, cfg['model']['type'], train_data)
-    logger.info("Training error: %s" % train_errs)
+    logger.info("Fitting: %s" % estimator)
+    gluon_train = ListDataset(train_data['train'].copy(), freq=freq_pd)
+    gluon_validate = ListDataset(train_data['test'].copy(), freq=freq_pd)
+    model = estimator.train(gluon_train, validation_data=gluon_validate)
+    validate_errs = score_model(model, cfg['model']['type'], gluon_validate, num_ts)
+    logger.info("Validation error: %s" % validate_errs)
 
-    test_data = load_plos_m3_data("/var/tmp/%s_all" % dataset_name, cfg['model']['type'])
-    test_errs = score_model(model,  cfg['model']['type'], test_data)
+    test_data = load_data("/var/tmp/%s_all" % dataset_name, cfg['model']['type'])
+    gluon_test = ListDataset(test_data['test'].copy(), freq=freq_pd)
+    test_errs = score_model(model, cfg['model']['type'], gluon_test, num_ts)
     logger.info("Testing error : %s" % test_errs)
     
     return {
-        'train' : train_errs,
-        'test'  : test_errs,
+        'validate' : validate_errs,
+        'test'     : test_errs,
     }
 
 def gluonts_fcast(cfg):   
@@ -273,10 +274,10 @@ def gluonts_fcast(cfg):
     
     try:
         err_metrics = forecast(cfg)
-        if np.isnan(err_metrics['train']['MASE']):
-            raise ValueError("Training MASE is NaN")
-        if np.isinf(err_metrics['train']['MASE']):
-           raise ValueError("Training MASE is infinite")
+        if np.isnan(err_metrics['validate']['MASE']):
+            raise ValueError("Validation MASE is NaN")
+        if np.isinf(err_metrics['validate']['MASE']):
+           raise ValueError("Validation MASE is infinite")
            
     except Exception as e:                    
         exc_str = format_exc()
@@ -290,7 +291,7 @@ def gluonts_fcast(cfg):
         }
         
     return {
-        'loss'        : err_metrics['train']['MASE'],
+        'loss'        : err_metrics['validate']['MASE'],
         'status'      : STATUS_OK,
         'cfg'         : cfg,
         'err_metrics' : err_metrics,
@@ -316,56 +317,58 @@ def call_hyperopt():
             'learning_rate_decay_factor' : hp.uniform('learning_rate_decay_factor', 0.10, 0.75),
             'minimum_learning_rate'      : hp.loguniform('minimum_learning_rate', np.log(005e-06), np.log(100e-06)),
             'weight_decay'               : hp.loguniform('weight_decay', np.log(01e-09), np.log(100e-09)),
+            'clip_gradient'              : hp.uniform('clip_gradient', 1, 10),              
         },
 
         'model' : hp.choice('model', [
-            {
-                'type'                       : 'SimpleFeedForwardEstimator',
-                'num_hidden_dimensions'      : hp.choice('num_hidden_dimensions', [[2], [4], [8], [16], [32], [64], [128],
-                                                                                   [2, 2], [4, 2], [8, 8], [8, 4], [16, 16], [16, 8], [32, 16], [64, 32],
-                                                                                   [64, 32, 16], [128, 64, 32]]),
-            },
-
-            {
-                'type'                       : 'DeepFactorEstimator',
-                'num_hidden_global'          : hp.choice('num_hidden_global', [2, 4, 8, 16, 32, 64, 128, 256]),
-                'num_layers_global'          : hp.choice('num_layers_global', [1, 2, 3]),
-                'num_factors'                : hp.choice('num_factors', [2, 4, 8, 16, 32]),
-                'num_hidden_local'           : hp.choice('num_hidden_local', [2, 4, 8]),
-                'num_layers_local'           : hp.choice('num_layers_local', [1, 2, 3]),
-            },
-                    
-            {
-                'type'                       : 'GaussianProcessEstimator',
-#                'rbf_kernel_output'          : hp.choice('rbf_kernel_output', [True, False]),
-                'max_iter_jitter'            : hp.choice('max_iter_jitter', [4, 8, 16, 32]),
-                'sample_noise'               : hp.choice('sample_noise', [True, False]),
-            },
-                    
-            {
-                'type'                       : 'WaveNetEstimator',
-                'embedding_dimension'        : hp.choice('embedding_dimension', [2, 4, 8, 16, 32, 64]),
-                'num_bins'                   : hp.choice('num_bins', [256, 512, 1024, 2048]),
-                'n_residue'                  : hp.choice('n_residue', [22, 23, 24, 25, 26]),
-                'n_skip'                     : hp.choice('n_skip', [4, 8, 16, 32, 64, 128]),
-                'dilation_depth'             : hp.choice('dilation_depth', [None, 1, 2, 3, 4, 5, 7, 9]),
-                'n_stacks'                   : hp.choice('n_stacks', [1, 2, 3]),
-                'wn_act_type'                : hp.choice('wn_act_type', ['elu', 'relu', 'sigmoid', 'tanh', 'softrelu', 'softsign']),
-            },
-                   
-            {
-                'type'                       : 'TransformerEstimator',
-                'tf_use_xreg'                : hp.choice('tf_use_xreg', [True, False]),
-                'model_dim_heads'            : hp.choice('model_dim_heads', [[2, 2], [4, 2], [8, 2], [16, 2], [32, 2], [64, 2],
-                                                                             [4, 4], [8, 4], [16, 4], [32, 4], [64, 4],
-                                                                             [8, 8], [16, 8], [32, 8], [64, 8],
-                                                                             [16, 16], [32, 16], [64, 16]]),
-                'inner_ff_dim_scale'         : hp.choice('inner_ff_dim_scale', [2, 3, 4, 5]),
-                'pre_seq'                    : hp.choice('pre_seq', ['d', 'n', 'dn', 'nd']),
-                'post_seq'                   : hp.choice('post_seq', ['d', 'r', 'n', 'dn', 'nd', 'rn', 'nr', 'dr', 'rd', 'drn', 'dnr', 'rdn', 'rnd', 'nrd', 'ndr']),
-                'tf_act_type'                : hp.choice('tf_act_type', ['relu', 'sigmoid', 'tanh', 'softrelu', 'softsign']),               
-                'trans_dropout_rate'         : hp.uniform('trans_dropout_rate', dropout_rate['min'], dropout_rate['max']),
-            },
+                
+#            {
+#                'type'                       : 'SimpleFeedForwardEstimator',
+#                'num_hidden_dimensions'      : hp.choice('num_hidden_dimensions', [[2], [4], [8], [16], [32], [64], [128],
+#                                                                                   [2, 2], [4, 2], [8, 8], [8, 4], [16, 16], [16, 8], [32, 16], [64, 32],
+#                                                                                   [64, 32, 16], [128, 64, 32]]),
+#            },
+#
+#            {
+#                'type'                       : 'DeepFactorEstimator',
+#                'num_hidden_global'          : hp.choice('num_hidden_global', [2, 4, 8, 16, 32, 64, 128, 256]),
+#                'num_layers_global'          : hp.choice('num_layers_global', [1, 2, 3]),
+#                'num_factors'                : hp.choice('num_factors', [2, 4, 8, 16, 32]),
+#                'num_hidden_local'           : hp.choice('num_hidden_local', [2, 4, 8]),
+#                'num_layers_local'           : hp.choice('num_layers_local', [1, 2, 3]),
+#            },
+#                    
+#            {
+#                'type'                       : 'GaussianProcessEstimator',
+##                'rbf_kernel_output'          : hp.choice('rbf_kernel_output', [True, False]),
+#                'max_iter_jitter'            : hp.choice('max_iter_jitter', [4, 8, 16, 32]),
+#                'sample_noise'               : hp.choice('sample_noise', [True, False]),
+#            },
+#                  
+#            {
+#                'type'                       : 'WaveNetEstimator',
+#                'embedding_dimension'        : hp.choice('embedding_dimension', [2, 4, 8, 16, 32, 64]),
+#                'num_bins'                   : hp.choice('num_bins', [256, 512, 1024, 2048]),
+#                'n_residue'                  : hp.choice('n_residue', [22, 23, 24, 25, 26]),
+#                'n_skip'                     : hp.choice('n_skip', [4, 8, 16, 32, 64, 128]),
+#                'dilation_depth'             : hp.choice('dilation_depth', [None, 1, 2, 3, 4, 5, 7, 9]),
+#                'n_stacks'                   : hp.choice('n_stacks', [1, 2, 3]),
+#                'wn_act_type'                : hp.choice('wn_act_type', ['elu', 'relu', 'sigmoid', 'tanh', 'softrelu', 'softsign']),
+#            },
+#                   
+#            {
+#                'type'                       : 'TransformerEstimator',
+#                'tf_use_xreg'                : hp.choice('tf_use_xreg', [True, False]),
+#                'model_dim_heads'            : hp.choice('model_dim_heads', [[2, 2], [4, 2], [8, 2], [16, 2], [32, 2], [64, 2],
+#                                                                             [4, 4], [8, 4], [16, 4], [32, 4], [64, 4],
+#                                                                             [8, 8], [16, 8], [32, 8], [64, 8],
+#                                                                             [16, 16], [32, 16], [64, 16]]),
+#                'inner_ff_dim_scale'         : hp.choice('inner_ff_dim_scale', [2, 3, 4, 5]),
+#                'pre_seq'                    : hp.choice('pre_seq', ['d', 'n', 'dn', 'nd']),
+#                'post_seq'                   : hp.choice('post_seq', ['d', 'r', 'n', 'dn', 'nd', 'rn', 'nr', 'dr', 'rd', 'drn', 'dnr', 'rdn', 'rnd', 'nrd', 'ndr']),
+#                'tf_act_type'                : hp.choice('tf_act_type', ['relu', 'sigmoid', 'tanh', 'softrelu', 'softsign']),               
+#                'trans_dropout_rate'         : hp.uniform('trans_dropout_rate', dropout_rate['min'], dropout_rate['max']),
+#            },
 
             {
                 'type'                       : 'DeepAREstimator',

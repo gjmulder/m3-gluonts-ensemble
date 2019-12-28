@@ -6,8 +6,8 @@ Created on Tue Nov 19 08:17:31 2019
 @author: mulderg
 """
 
-# awk 'BEGIN {print "date.time,series,value"} /epoch_loss/ {print $1, $2 ",loss,", substr($NF, 14)} /Learning/ {print $1, $2 ",learning.rate,", $NF}' nohup.log > final_run_training_loss.csv
-# read_csv("final_run_training_loss.csv") %>% filter(date.time > ymd_hms("2019-11-20 18:00:00")) %>% ggplot(aes(x = date.time, y = value)) + geom_point() + facet_grid(series ~ ., scales = "free") + scale_y_log10()
+# awk 'BEGIN {print "date.time,series,value"} /metric..epoch_loss/ {print $1, $2 ",training_loss,", substr($NF, 14)} /metric..validation_epoch_loss/ {print $1, $2 ",final_loss,", substr($NF, 25)} /Learning/ {print $1, $2 ",learning.rate,", $NF}' 1440epochs.out > final_run_training_loss.csv
+# read_csv("final_run_training_loss.csv") %>% filter(value < 10) %>% ggplot(aes(x = date.time, y = value)) + geom_point(size=0.1) + geom_smooth() + facet_grid(series ~ ., scales = "free") + scale_y_log10()
 
 from logging import basicConfig, getLogger
 from logging import DEBUG as log_level
@@ -49,6 +49,7 @@ if __name__ == "__main__":
                                 "patience" : 64,
                                 "weight_decay" : 1.8916583050673646e-8
                         }
-            
+             }
+
     results = gluonts_fcast(cfg)
     logger.info("Final results:\n%s" % pformat(results, indent=4, width=160))
