@@ -17,7 +17,7 @@ basicConfig(level = log_level,
             datefmt ='%Y-%m-%d %H:%M:%S')
 logger = getLogger(__name__)
 
-from plos_m3 import rand_seed, gluonts_fcast
+from m4_nextgen import rand_seed, gluonts_fcast
 import mxnet as mx
 import numpy as np
 from pprint import pformat
@@ -26,28 +26,31 @@ mx.random.seed(rand_seed, ctx='all')
 np.random.seed(rand_seed)
     
 if __name__ == "__main__":
-    #"loss" : 1.0307178497314453,
-    #"status" : "ok",
+#                "loss" : 4.2914122848614324,
+#                "status" : "ok",
     cfg = {
             "box_cox" : False,
-            "tcrit" : -1.0, #1.645,
             "model" : {
-                "dar_dropout_rate" : 0.11408673454965677,
-                "num_cells" : 512,
-                "num_layers" : 3,
-                "type" : "DeepAREstimator"
-        },
-        "trainer" : {
-            "batch_size" : 200,
-            "learning_rate" : 0.0009585442459283113,
-            "learning_rate_decay_factor" : 0.6412444747653523,
-            "max_epochs" : 1000,
-            "minimum_learning_rate" : 0.000001857482099265628,
-            "num_batches_per_epoch" : 80,
-            "patience" : 80,
-            "weight_decay" : 8.213239578665893e-8,
+                    "da_cell_type" : "lstm",
+                    "da_dropout_rate" : 0.07351329068782851,
+                    "da_num_cells" : 128,
+                    "da_num_layers" : 4,
+                    "da_use_xreg" : True,
+                    "type" : "DeepAREstimator"
+            },
+            "trainer" : {
+                    "batch_size" : 512,
+                    "clip_gradient" : 3.8803777267641415,
+                    "learning_rate" : 0.001634652644908689,
+                    "learning_rate_decay_factor" : 0.714819374291207,
+                    "max_epochs" : 1024,
+                    "minimum_learning_rate" : 0.000005066238764992976,
+                    "num_batches_per_epoch" : 128,
+                    "patience" : 32,
+                    "weight_decay" : 8.854690077553568e-9
+            }
         }
-    }
+
             
     results = gluonts_fcast(cfg)
     logger.info("Final results:\n%s" % pformat(results, indent=4, width=160))
