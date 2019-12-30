@@ -470,26 +470,26 @@ def call_hyperopt():
                 'da+clip_gradient'               : hp.uniform('da+clip_gradient', clip_gradient['min'], clip_gradient['max']),
             },
 
-            {
-                'type'                           : 'DeepStateEstimator',
-                'ds_cell_type'                   : hp.choice('ds_cell_type', ['lstm', 'gru']),
-                'add_trend'                      : hp.choice('add_trend', [True, False]),
-                'ds_num_cells'                   : hp.choice('ds_num_cells', [2, 4, 8, 16, 32, 64, 128, 256, 512]),
-                'ds_num_layers'                  : hp.choice('ds_num_layers', [1, 2, 3, 4, 5, 7, 9]),
-                'num_periods_to_train'           : hp.choice('num_periods_to_train', [2, 3, 4, 5, 6]),   
-                'ds_dropout_rate'                : hp.uniform('ds_dropout_rate', dropout_rate['min'], dropout_rate['max']),
-                
-                'ds+max_epochs'                  : hp.choice('ds+max_epochs', max_epochs),
-                'ds+num_batches_per_epoch'       : hp.choice('ds+num_batches_per_epoch', num_batches_per_epoch),
-                'ds+batch_size'                  : hp.choice('ds+batch_size', batch_size),
-                'ds+patience'                    : hp.choice('ds+patience', patience),
-                
-                'ds+learning_rate'               : hp.loguniform('ds+learning_rate', learning_rate['min'], learning_rate['max']),
-                'ds+learning_rate_decay_factor'  : hp.uniform('ds+learning_rate_decay_factor', learning_rate_decay_factor['min'], learning_rate_decay_factor['max']),
-                'ds+minimum_learning_rate'       : hp.loguniform('ds+minimum_learning_rate', minimum_learning_rate['min'], minimum_learning_rate['max']),
-                'ds+weight_decay'                : hp.loguniform('ds+weight_decay', weight_decay['min'], weight_decay['max']),
-                'ds+clip_gradient'               : hp.uniform('ds+clip_gradient', clip_gradient['min'], clip_gradient['max']),
-            },
+#            {
+#                'type'                           : 'DeepStateEstimator',
+#                'ds_cell_type'                   : hp.choice('ds_cell_type', ['lstm', 'gru']),
+#                'add_trend'                      : hp.choice('add_trend', [True, False]),
+#                'ds_num_cells'                   : hp.choice('ds_num_cells', [2, 4, 8, 16, 32, 64, 128, 256, 512]),
+#                'ds_num_layers'                  : hp.choice('ds_num_layers', [1, 2, 3, 4, 5, 7, 9]),
+#                'num_periods_to_train'           : hp.choice('num_periods_to_train', [2, 3, 4, 5, 6]),   
+#                'ds_dropout_rate'                : hp.uniform('ds_dropout_rate', dropout_rate['min'], dropout_rate['max']),
+#                
+#                'ds+max_epochs'                  : hp.choice('ds+max_epochs', max_epochs),
+#                'ds+num_batches_per_epoch'       : hp.choice('ds+num_batches_per_epoch', num_batches_per_epoch),
+#                'ds+batch_size'                  : hp.choice('ds+batch_size', batch_size),
+#                'ds+patience'                    : hp.choice('ds+patience', patience),
+#                
+#                'ds+learning_rate'               : hp.loguniform('ds+learning_rate', learning_rate['min'], learning_rate['max']),
+#                'ds+learning_rate_decay_factor'  : hp.uniform('ds+learning_rate_decay_factor', learning_rate_decay_factor['min'], learning_rate_decay_factor['max']),
+#                'ds+minimum_learning_rate'       : hp.loguniform('ds+minimum_learning_rate', minimum_learning_rate['min'], minimum_learning_rate['max']),
+#                'ds+weight_decay'                : hp.loguniform('ds+weight_decay', weight_decay['min'], weight_decay['max']),
+#                'ds+clip_gradient'               : hp.uniform('ds+clip_gradient', clip_gradient['min'], clip_gradient['max']),
+#            },
         ])
     }
                             
