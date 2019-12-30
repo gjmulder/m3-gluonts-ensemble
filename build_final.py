@@ -51,6 +51,5 @@ if __name__ == "__main__":
             }
         }
 
-            
     results = gluonts_fcast(cfg)
     logger.info("Final results:\n%s" % pformat(results, indent=4, width=160))
