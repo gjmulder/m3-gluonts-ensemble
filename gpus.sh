@@ -12,6 +12,6 @@ for X in `seq 1 $REP`
 do
 	echo "==============================================================================="
 	date
-	(nvidia-smi ;ssh yokojitsu nvidia-smi ; ssh asushimu nvidia-smi )| egrep "python3|Default" | sort -n
+	(nvidia-smi ;ssh yokojitsu nvidia-smi ; ssh asushimu nvidia-smi )| egrep "python3|Default" | sort -n -k 9,9
 	sleep $WAIT
 done
