@@ -43,12 +43,12 @@ if "DATASET" in environ:
     
     use_cluster = True
 else:
-    dataset_name = "m4_hourly"
+    dataset_name = "m4_monthly"
     logger.warning("DATASET not set, using: %s" % dataset_name)
     
-freq_pd = "H"
-freq = 24
-prediction_length = 48
+freq_pd = "M"
+freq = 12
+prediction_length = 18
 
 def score_model(model, model_type, gluon_test_data, num_ts):
     import mxnet as mx
@@ -128,26 +128,26 @@ def forecast(cfg):
     train_data  = load_data("/var/tmp/%s" % dataset_name, cfg['model']['type'])
     num_ts = len(train_data['train'])
     
-#    trainer=Trainer(
-#        epochs=3,
-#        hybridize=False,
-#    )
-    
-    trainer_cfg = get_trainer_hyperparams(cfg['model'])
     trainer=Trainer(
-        mx.Context("gpu"),
+        epochs=3,
         hybridize=False,
-        epochs=trainer_cfg['max_epochs'],
-        num_batches_per_epoch=trainer_cfg['num_batches_per_epoch'],
-        batch_size=trainer_cfg['batch_size'],
-        patience=trainer_cfg['patience'],
-        
-        learning_rate=trainer_cfg['learning_rate'],
-        learning_rate_decay_factor=trainer_cfg['learning_rate_decay_factor'],
-        minimum_learning_rate=trainer_cfg['minimum_learning_rate'],
-        clip_gradient=trainer_cfg['clip_gradient'],
-        weight_decay=trainer_cfg['weight_decay'],
     )
+    
+#    trainer_cfg = get_trainer_hyperparams(cfg['model'])
+#    trainer=Trainer(
+#        mx.Context("gpu"),
+#        hybridize=False,
+#        epochs=trainer_cfg['max_epochs'],
+#        num_batches_per_epoch=trainer_cfg['num_batches_per_epoch'],
+#        batch_size=trainer_cfg['batch_size'],
+#        patience=trainer_cfg['patience'],
+#        
+#        learning_rate=trainer_cfg['learning_rate'],
+#        learning_rate_decay_factor=trainer_cfg['learning_rate_decay_factor'],
+#        minimum_learning_rate=trainer_cfg['minimum_learning_rate'],
+#        clip_gradient=trainer_cfg['clip_gradient'],
+#        weight_decay=trainer_cfg['weight_decay'],
+#    )
 
     if cfg['box_cox']:
         distr_output=distribution.TransformedDistributionOutput(distribution.GaussianOutput(),
