@@ -3,7 +3,6 @@
 
 if [ $# -eq 0 ]
 then
-RESULT="ok"
 	DBS=`echo "show dbs" | mongo --host heika | awk '/GB$/ {print $1}' | egrep -v "^(admin|config|local)"`
 else
 	DBS=$*
