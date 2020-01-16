@@ -43,7 +43,7 @@ if "DATASET" in environ:
     
     use_cluster = True
 else:
-    dataset_name = "m4_monthly"
+    dataset_name = "m3_monthly"
     logger.warning("DATASET not set, using: %s" % dataset_name)
     
 freq_pd = "M"
@@ -310,10 +310,10 @@ def gluonts_fcast(cfg):
 
 def call_hyperopt():
 
-    # Trainer htperparams common to all models
-    max_epochs = [32, 64, 128, 256, 512, 1024, 2048]
-    num_batches_per_epoch = [32, 64, 128, 256, 512, 1024, 2048]
-    batch_size = [32, 64, 128, 256, 512]
+    # Trainer hyperparams common to all models
+    max_epochs = [32, 64, 128, 256, 512, 1024]
+    num_batches_per_epoch = [32, 64, 128, 256, 512]
+    batch_size = [32, 64, 128, 256]
     patience = [8, 16, 32, 64]
     learning_rate = {
         'min' : np.log(05e-04),
@@ -363,52 +363,52 @@ def call_hyperopt():
                 'sff+clip_gradient'              : hp.uniform('sff+clip_gradient', clip_gradient['min'], clip_gradient['max']), 
             },
 
-            {
-                'type'                           : 'DeepFactorEstimator',
-                'num_hidden_global'              : hp.choice('num_hidden_global', [2, 4, 8, 16, 32, 64, 128, 256]),
-                'num_layers_global'              : hp.choice('num_layers_global', [1, 2, 3]),
-                'num_factors'                    : hp.choice('num_factors', [2, 4, 8, 16, 32]),
-                'num_hidden_local'               : hp.choice('num_hidden_local', [2, 4, 8]),
-                'num_layers_local'               : hp.choice('num_layers_local', [1, 2, 3]),
-
-                'df+max_epochs'                  : hp.choice('df+max_epochs', max_epochs),
-                'df+num_batches_per_epoch'       : hp.choice('df+num_batches_per_epoch', num_batches_per_epoch),
-                'df+batch_size'                  : hp.choice('df+batch_size', batch_size),
-                'df+patience'                    : hp.choice('df+patience', patience),
-                
-                'df+learning_rate'               : hp.loguniform('df+learning_rate', learning_rate['min'], learning_rate['max']),
-                'df+learning_rate_decay_factor'  : hp.uniform('df+learning_rate_decay_factor', learning_rate_decay_factor['min'], learning_rate_decay_factor['max']),
-                'df+minimum_learning_rate'       : hp.loguniform('df+minimum_learning_rate', minimum_learning_rate['min'], minimum_learning_rate['max']),
-                'df+weight_decay'                : hp.loguniform('df+weight_decay', weight_decay['min'], weight_decay['max']),
-                'df+clip_gradient'               : hp.uniform('df+clip_gradient', clip_gradient['min'], clip_gradient['max']), 
-            },
+#            {
+#                'type'                           : 'DeepFactorEstimator',
+#                'num_hidden_global'              : hp.choice('num_hidden_global', [2, 4, 8, 16, 32, 64, 128, 256]),
+#                'num_layers_global'              : hp.choice('num_layers_global', [1, 2, 3]),
+#                'num_factors'                    : hp.choice('num_factors', [2, 4, 8, 16, 32]),
+#                'num_hidden_local'               : hp.choice('num_hidden_local', [2, 4, 8]),
+#                'num_layers_local'               : hp.choice('num_layers_local', [1, 2, 3]),
+#
+#                'df+max_epochs'                  : hp.choice('df+max_epochs', max_epochs),
+#                'df+num_batches_per_epoch'       : hp.choice('df+num_batches_per_epoch', num_batches_per_epoch),
+#                'df+batch_size'                  : hp.choice('df+batch_size', batch_size),
+#                'df+patience'                    : hp.choice('df+patience', patience),
+#                
+#                'df+learning_rate'               : hp.loguniform('df+learning_rate', learning_rate['min'], learning_rate['max']),
+#                'df+learning_rate_decay_factor'  : hp.uniform('df+learning_rate_decay_factor', learning_rate_decay_factor['min'], learning_rate_decay_factor['max']),
+#                'df+minimum_learning_rate'       : hp.loguniform('df+minimum_learning_rate', minimum_learning_rate['min'], minimum_learning_rate['max']),
+#                'df+weight_decay'                : hp.loguniform('df+weight_decay', weight_decay['min'], weight_decay['max']),
+#                'df+clip_gradient'               : hp.uniform('df+clip_gradient', clip_gradient['min'], clip_gradient['max']), 
+#            },
                     
-            {
-                'type'                           : 'GaussianProcessEstimator',
-#                'rbf_kernel_output'              : hp.choice('rbf_kernel_output', [True, False]),
-                'max_iter_jitter'                : hp.choice('max_iter_jitter', [4, 8, 16, 32]),
-                'sample_noise'                   : hp.choice('sample_noise', [True, False]),
-                
-                'gp+max_epochs'                  : hp.choice('gp+max_epochs', max_epochs),
-                'gp+num_batches_per_epoch'       : hp.choice('gp+num_batches_per_epoch', num_batches_per_epoch),
-                'gp+batch_size'                  : hp.choice('gp+batch_size', batch_size),
-                'gp+patience'                    : hp.choice('gp+patience', patience),
-                
-                'gp+learning_rate'               : hp.loguniform('gp+learning_rate', learning_rate['min'], learning_rate['max']),
-                'gp+learning_rate_decay_factor'  : hp.uniform('gp+learning_rate_decay_factor', learning_rate_decay_factor['min'], learning_rate_decay_factor['max']),
-                'gp+minimum_learning_rate'       : hp.loguniform('gp+minimum_learning_rate', minimum_learning_rate['min'], minimum_learning_rate['max']),
-                'gp+weight_decay'                : hp.loguniform('gp+weight_decay', weight_decay['min'], weight_decay['max']),
-                'gp+clip_gradient'               : hp.uniform('gp+clip_gradient', clip_gradient['min'], clip_gradient['max']), 
-
-            },
+#            {
+#                'type'                           : 'GaussianProcessEstimator',
+##                'rbf_kernel_output'              : hp.choice('rbf_kernel_output', [True, False]),
+#                'max_iter_jitter'                : hp.choice('max_iter_jitter', [4, 8, 16, 32]),
+#                'sample_noise'                   : hp.choice('sample_noise', [True, False]),
+#                
+#                'gp+max_epochs'                  : hp.choice('gp+max_epochs', max_epochs),
+#                'gp+num_batches_per_epoch'       : hp.choice('gp+num_batches_per_epoch', num_batches_per_epoch),
+#                'gp+batch_size'                  : hp.choice('gp+batch_size', batch_size),
+#                'gp+patience'                    : hp.choice('gp+patience', patience),
+#                
+#                'gp+learning_rate'               : hp.loguniform('gp+learning_rate', learning_rate['min'], learning_rate['max']),
+#                'gp+learning_rate_decay_factor'  : hp.uniform('gp+learning_rate_decay_factor', learning_rate_decay_factor['min'], learning_rate_decay_factor['max']),
+#                'gp+minimum_learning_rate'       : hp.loguniform('gp+minimum_learning_rate', minimum_learning_rate['min'], minimum_learning_rate['max']),
+#                'gp+weight_decay'                : hp.loguniform('gp+weight_decay', weight_decay['min'], weight_decay['max']),
+#                'gp+clip_gradient'               : hp.uniform('gp+clip_gradient', clip_gradient['min'], clip_gradient['max']), 
+#
+#            },
                   
             {
                 'type'                           : 'WaveNetEstimator',
-                'embedding_dimension'            : hp.choice('embedding_dimension', [2, 4, 8, 16, 32, 64]),
-                'num_bins'                       : hp.choice('num_bins', [256, 512, 1024, 2048]),
+                'embedding_dimension'            : hp.choice('embedding_dimension', [2, 4, 8, 16]),
+                'num_bins'                       : hp.choice('num_bins', [256, 512]),
                 'n_residue'                      : hp.choice('n_residue', [22, 23, 24, 25, 26]),
-                'n_skip'                         : hp.choice('n_skip', [4, 8, 16, 32, 64, 128]),
-                'dilation_depth'                 : hp.choice('dilation_depth', [None, 1, 2, 3, 4, 5, 7, 9]),
+                'n_skip'                         : hp.choice('n_skip', [4, 8, 16, 32, 64]),
+                'dilation_depth'                 : hp.choice('dilation_depth', [None, 1, 2, 3, 4]),
                 'n_stacks'                       : hp.choice('n_stacks', [1, 2, 3]),
                 'wn_act_type'                    : hp.choice('wn_act_type', ['elu', 'relu', 'sigmoid', 'tanh', 'softrelu', 'softsign']),
                 
@@ -428,9 +428,7 @@ def call_hyperopt():
                 'type'                           : 'TransformerEstimator',
                 'tf_use_xreg'                    : hp.choice('tf_use_xreg', [True, False]),
                 'model_dim_heads'                : hp.choice('model_dim_heads', [[2, 2], [4, 2], [8, 2], [16, 2], [32, 2], [64, 2],
-                                                                                 [4, 4], [8, 4], [16, 4], [32, 4], [64, 4],
-                                                                                 [8, 8], [16, 8], [32, 8], [64, 8],
-                                                                                 [16, 16], [32, 16], [64, 16]]),
+                                                                                 [4, 4], [8, 4], [16, 4], [32, 4]]),
                 'inner_ff_dim_scale'             : hp.choice('inner_ff_dim_scale', [2, 3, 4, 5]),
                 'pre_seq'                        : hp.choice('pre_seq', ['d', 'n', 'dn', 'nd']),
                 'post_seq'                       : hp.choice('post_seq', ['d', 'r', 'n', 'dn', 'nd', 'rn', 'nr', 'dr', 'rd', 'drn', 'dnr', 'rdn', 'rnd', 'nrd', 'ndr']),
@@ -454,7 +452,7 @@ def call_hyperopt():
                 'da_cell_type'                   : hp.choice('da_cell_type', ['lstm', 'gru']),
                 'da_use_xreg'                    : hp.choice('da_use_xreg', [True, False]),
                 'da_num_cells'                   : hp.choice('da_num_cells', [2, 4, 8, 16, 32, 64, 128, 256, 512]),
-                'da_num_layers'                  : hp.choice('da_num_layers', [1, 2, 3, 4, 5, 7, 9]),
+                'da_num_layers'                  : hp.choice('da_num_layers', [3]),
                 
                 'da_dropout_rate'                : hp.uniform('da_dropout_rate', dropout_rate['min'], dropout_rate['max']),
                 
