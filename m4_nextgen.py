@@ -92,7 +92,7 @@ def compute_horiz_errs(test_data, forecasts, num_ts):
         y_test18 = y_test[-6:]
 
         y_hat = forecasts[idx].samples.reshape(-1)
-        y_hats[idx] = y_hat.tolist()
+        y_hats[str(idx)] = y_hat.tolist()
         
         y_hat06 = y_hat[-prediction_length:(-prediction_length+6)]
         y_hat12 = y_hat[(-prediction_length+6):(-prediction_length+12)]
@@ -207,26 +207,26 @@ def forecast(cfg):
     train_data  = load_data("/var/tmp/%s_all" % dataset_name, cfg['model']['type'])
     num_ts = len(train_data['train'])
     
-    trainer=Trainer(
-        epochs=3,
-        hybridize=False,
-    )
-
-#    trainer_cfg = get_trainer_hyperparams(cfg['model'])
 #    trainer=Trainer(
-#        mx.Context("gpu"),
+#        epochs=3,
 #        hybridize=False,
-#        epochs=trainer_cfg['max_epochs'],
-#        num_batches_per_epoch=trainer_cfg['num_batches_per_epoch'],
-#        batch_size=trainer_cfg['batch_size'],
-#        patience=trainer_cfg['patience'],
-#        
-#        learning_rate=trainer_cfg['learning_rate'],
-#        learning_rate_decay_factor=trainer_cfg['learning_rate_decay_factor'],
-#        minimum_learning_rate=trainer_cfg['minimum_learning_rate'],
-#        clip_gradient=trainer_cfg['clip_gradient'],
-#        weight_decay=trainer_cfg['weight_decay'],
 #    )
+
+    trainer_cfg = get_trainer_hyperparams(cfg['model'])
+    trainer=Trainer(
+        mx.Context("gpu"),
+        hybridize=False,
+        epochs=trainer_cfg['max_epochs'],
+        num_batches_per_epoch=trainer_cfg['num_batches_per_epoch'],
+        batch_size=trainer_cfg['batch_size'],
+        patience=trainer_cfg['patience'],
+        
+        learning_rate=trainer_cfg['learning_rate'],
+        learning_rate_decay_factor=trainer_cfg['learning_rate_decay_factor'],
+        minimum_learning_rate=trainer_cfg['minimum_learning_rate'],
+        clip_gradient=trainer_cfg['clip_gradient'],
+        weight_decay=trainer_cfg['weight_decay'],
+    )
 
     if cfg['box_cox']:
         distr_output=distribution.TransformedDistributionOutput(distribution.GaussianOutput(),
