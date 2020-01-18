@@ -18,7 +18,7 @@ import numpy as np
 from pprint import pformat
 from datetime import date
 
-from hyperopt import fmin, tpe, hp, space_eval, STATUS_FAIL, STATUS_OK
+from hyperopt import fmin, rand, hp, space_eval, STATUS_FAIL, STATUS_OK
 from hyperopt.mongoexp import MongoTrials
 from os import environ
 
@@ -426,8 +426,8 @@ def call_hyperopt():
 #    }
     
     space = {
-        'box_cox' : hp.choice('box_cox', [True, False]),
-        'rand_seed' : hp.choice('rand_seed', list(range(1000))),
+        'box_cox' : hp.choice('box_cox', [False]),
+        'rand_seed' : hp.choice('rand_seed', list(range(10000))),
         'model' : hp.choice('model', [
             {
                 'type'                           : 'SimpleFeedForwardEstimator',
@@ -578,7 +578,7 @@ def call_hyperopt():
         trials = MongoTrials('mongo://heika:27017/%s-%s/jobs' % (dataset_name, version), exp_key=exp_key)
         best = fmin(gluonts_fcast, space, rstate=np.random.RandomState(42), algo=tpe.suggest, show_progressbar=False, trials=trials, max_evals=1000)
     else:
-        best = fmin(gluonts_fcast, space, algo=tpe.suggest, show_progressbar=False, max_evals=20)
+        best = fmin(gluonts_fcast, space, algo=rand.suggest, show_progressbar=False, max_evals=20)
          
     return space_eval(space, best) 
     
