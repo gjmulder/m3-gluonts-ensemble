@@ -344,20 +344,20 @@ def forecast(cfg):
     gluon_train = ListDataset(train_data['train'].copy(), freq=freq_pd)
     gluon_validate = ListDataset(train_data['test'].copy(), freq=freq_pd)
     model = estimator.train(gluon_train, validation_data=gluon_validate)
-    validate_errs, _ = score_model(model, cfg['model']['type'], gluon_validate, num_ts)
+    validate_errs, forecasts = score_model(model, cfg['model']['type'], gluon_validate, num_ts)
     logger.info("Validation error: %s" % validate_errs)
 
-    test_data = load_data("/var/tmp/%s_all" % dataset_name, cfg['model']['type'])
-    gluon_test = ListDataset(test_data['test'].copy(), freq=freq_pd)
-    test_errs, forecasts = score_model(model, cfg['model']['type'], gluon_test, num_ts)
-    logger.info("Testing error : %s" % test_errs)
+#    test_data = load_data("/var/tmp/%s_all" % dataset_name, cfg['model']['type'])
+#    gluon_test = ListDataset(test_data['test'].copy(), freq=freq_pd)
+#    test_errs, forecasts = score_model(model, cfg['model']['type'], gluon_test, num_ts)
+#    logger.info("Testing error : %s" % test_errs)
 
-    horiz_errs, y_hats = compute_horiz_errs(test_data['test'], forecasts, num_ts)
+    horiz_errs, y_hats = compute_horiz_errs(train_data['test'], forecasts, num_ts)
     logger.info("Horizon error : %s" % horiz_errs)
     
     return {
         'validate' : validate_errs,
-        'test'     : test_errs,
+#        'test'     : test_errs,
         'horizon'  : horiz_errs,
         'y_hats'   : y_hats
     }
