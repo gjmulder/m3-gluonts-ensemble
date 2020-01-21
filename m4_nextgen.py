@@ -48,7 +48,7 @@ else:
     
 freq_pd = "M"
 freq = 12
-prediction_length = 18
+prediction_length = 1
 
 def smape(a, b):
     """
@@ -80,51 +80,51 @@ def mase(insample, y_test, y_hat_test, freq):
 
 def compute_horiz_errs(test_data, forecasts, num_ts):
     y_hats = {}
-    smapes, smapes06, smapes12, smapes18 = [], [], [], []
-    mases, mases06, mases12, mases18 = [], [], [], []
+#    smapes, smapes06, smapes12, smapes18 = [], [], [], []
+#    mases, mases06, mases12, mases18 = [], [], [], []
     
     for idx in range(num_ts):
-        in_sample = test_data[idx]['target'][:-prediction_length]
-
-        y_test = test_data[idx]['target'][-prediction_length:]
-        y_test06 = y_test[-prediction_length:(-prediction_length+6)]
-        y_test12 = y_test[(-prediction_length+6):(-prediction_length+12)]
-        y_test18 = y_test[-6:]
+#        in_sample = test_data[idx]['target'][:-prediction_length]
+#
+#        y_test = test_data[idx]['target'][-prediction_length:]
+#        y_test06 = y_test[-prediction_length:(-prediction_length+6)]
+#        y_test12 = y_test[(-prediction_length+6):(-prediction_length+12)]
+#        y_test18 = y_test[-6:]
 
         y_hat = forecasts[idx].samples.reshape(-1)
         y_hats[str(idx)] = y_hat.tolist()
         
-        y_hat06 = y_hat[-prediction_length:(-prediction_length+6)]
-        y_hat12 = y_hat[(-prediction_length+6):(-prediction_length+12)]
-        y_hat18 = y_hat[-6:]
-
-        smapes.append(smape(y_test, y_hat))
-        mases.append(mase(in_sample, y_test, y_hat, freq))
-
-        smapes06.append(smape(y_test06, y_hat06))
-        mases06.append(mase(in_sample, y_test06, y_hat06, freq))
-
-        smapes12.append(smape(y_test12, y_hat12))        
-        mases12.append(mase(in_sample, y_test12, y_hat12, freq))
-
-        smapes18.append(smape(y_test18, y_hat18))
-        mases18.append(mase(in_sample, y_test18, y_hat18, freq))
+#        y_hat06 = y_hat[-prediction_length:(-prediction_length+6)]
+#        y_hat12 = y_hat[(-prediction_length+6):(-prediction_length+12)]
+#        y_hat18 = y_hat[-6:]
+#
+#        smapes.append(smape(y_test, y_hat))
+#        mases.append(mase(in_sample, y_test, y_hat, freq))
+#
+#        smapes06.append(smape(y_test06, y_hat06))
+#        mases06.append(mase(in_sample, y_test06, y_hat06, freq))
+#
+#        smapes12.append(smape(y_test12, y_hat12))        
+#        mases12.append(mase(in_sample, y_test12, y_hat12, freq))
+#
+#        smapes18.append(smape(y_test18, y_hat18))
+#        mases18.append(mase(in_sample, y_test18, y_hat18, freq))
+#    
+#    errs = {
+#        'smape'   : np.nanmean(smapes),
+#        'mase'    : np.nanmean(mases),
+#
+#        'smape06' : np.nanmean(smapes06),
+#        'mase06'  : np.nanmean(mases06),
+#    
+#        'smape12' : np.nanmean(smapes12),
+#        'mase12'  : np.nanmean(mases12),
+#
+#        'smape18' : np.nanmean(smapes18),
+#        'mase18'  : np.nanmean(mases18),
+#    }
     
-    errs = {
-        'smape'   : np.nanmean(smapes),
-        'mase'    : np.nanmean(mases),
-
-        'smape06' : np.nanmean(smapes06),
-        'mase06'  : np.nanmean(mases06),
-    
-        'smape12' : np.nanmean(smapes12),
-        'mase12'  : np.nanmean(mases12),
-
-        'smape18' : np.nanmean(smapes18),
-        'mase18'  : np.nanmean(mases18),
-    }
-    
-    return errs, y_hats
+    return y_hats
 
 def score_model(model, model_type, gluon_test_data, num_ts):
     import mxnet as mx
@@ -352,13 +352,13 @@ def forecast(cfg):
 #    test_errs, forecasts = score_model(model, cfg['model']['type'], gluon_test, num_ts)
 #    logger.info("Testing error : %s" % test_errs)
 
-    horiz_errs, y_hats = compute_horiz_errs(train_data['test'], forecasts, num_ts)
-    logger.info("Horizon error : %s" % horiz_errs)
+    y_hats = compute_horiz_errs(train_data['test'], forecasts, num_ts)
+#    logger.info("Horizon error : %s" % horiz_errs)
     
     return {
         'validate' : validate_errs,
 #        'test'     : test_errs,
-        'horizon'  : horiz_errs,
+#        'horizon'  : horiz_errs,
         'y_hats'   : y_hats
     }
 
@@ -431,18 +431,18 @@ def call_hyperopt():
         'model' : hp.choice('model', [
             {
                 'type'                           : 'SimpleFeedForwardEstimator',
-                'num_hidden_dimensions'          : hp.choice('num_hidden_dimensions', [[64, 32, 16]]),
+                'num_hidden_dimensions'          : hp.choice('num_hidden_dimensions', [[16, 8]]),
                    
                 'sff+max_epochs'                 : hp.choice('sff+max_epochs', [1024]),
-                'sff+num_batches_per_epoch'      : hp.choice('sff+num_batches_per_epoch', [128]),
-                'sff+batch_size'                 : hp.choice('sff+batch_size', [128]),
-                'sff+patience'                   : hp.choice('sff+patience', [16]),
+                'sff+num_batches_per_epoch'      : hp.choice('sff+num_batches_per_epoch', [32]),
+                'sff+batch_size'                 : hp.choice('sff+batch_size', [256]),
+                'sff+patience'                   : hp.choice('sff+patience', [64]),
                 
-                'sff+learning_rate'              : hp.choice('sff+learning_rate', [0.001179097673136695]),
-                'sff+learning_rate_decay_factor' : hp.choice('sff+learning_rate_decay_factor', [0.6203271004468841]),
-                'sff+minimum_learning_rate'      : hp.choice('sff+minimum_learning_rate', [0.00005515166885528854]),
-                'sff+weight_decay'               : hp.choice('sff+weight_decay', [5.3055722639590846e-8]),
-                'sff+clip_gradient'              : hp.choice('sff+clip_gradient', [5.1312206273572505]), 
+                'sff+learning_rate'              : hp.choice('sff+learning_rate', [0.0008106323839487305]),
+                'sff+learning_rate_decay_factor' : hp.choice('sff+learning_rate_decay_factor', [0.7088613640841722]),
+                'sff+minimum_learning_rate'      : hp.choice('sff+minimum_learning_rate', [2.3403617408667674e-7]),
+                'sff+weight_decay'               : hp.choice('sff+weight_decay', [1.068262923373402e-8]),
+                'sff+clip_gradient'              : hp.choice('sff+clip_gradient', [10]), 
             },
 
 #            {
@@ -468,85 +468,85 @@ def call_hyperopt():
 #            {
 #                'type'                           : 'GaussianProcessEstimator',
 ##                'rbf_kernel_output'              : hp.choice('rbf_kernel_output', [True, False]),
-#                'max_iter_jitter'                : hp.choice('max_iter_jitter', [4, 8, 16, 32]),
-#                'sample_noise'                   : hp.choice('sample_noise', [True, False]),
+#                'max_iter_jitter'                : hp.choice('max_iter_jitter', [8]),
+#                'sample_noise'                   : hp.choice('sample_noise', [False]),
 #                
-#                'gp+max_epochs'                  : hp.choice('gp+max_epochs', max_epochs),
-#                'gp+num_batches_per_epoch'       : hp.choice('gp+num_batches_per_epoch', num_batches_per_epoch),
-#                'gp+batch_size'                  : hp.choice('gp+batch_size', batch_size),
-#                'gp+patience'                    : hp.choice('gp+patience', patience),
+#                'gp+max_epochs'                  : hp.choice('gp+max_epochs', [2048]),
+#                'gp+num_batches_per_epoch'       : hp.choice('gp+num_batches_per_epoch', [256]),
+#                'gp+batch_size'                  : hp.choice('gp+batch_size', [128]),
+#                'gp+patience'                    : hp.choice('gp+patience', [16]),
 #                
-#                'gp+learning_rate'               : hp.loguniform('gp+learning_rate', learning_rate['min'], learning_rate['max']),
-#                'gp+learning_rate_decay_factor'  : hp.uniform('gp+learning_rate_decay_factor', learning_rate_decay_factor['min'], learning_rate_decay_factor['max']),
-#                'gp+minimum_learning_rate'       : hp.loguniform('gp+minimum_learning_rate', minimum_learning_rate['min'], minimum_learning_rate['max']),
-#                'gp+weight_decay'                : hp.loguniform('gp+weight_decay', weight_decay['min'], weight_decay['max']),
-#                'gp+clip_gradient'               : hp.uniform('gp+clip_gradient', clip_gradient['min'], clip_gradient['max']), 
+#                'gp+learning_rate'               : hp.choice('gp+learning_rate', [0.001680069693528867]),
+#                'gp+learning_rate_decay_factor'  : hp.choice('gp+learning_rate_decay_factor', [0.6153225279823602]),
+#                'gp+minimum_learning_rate'       : hp.choice('gp+minimum_learning_rate', [8.154688047405645e-7]),
+#                'gp+weight_decay'                : hp.choice('gp+weight_decay', [1.4523274501810558e-7]),
+#                'gp+clip_gradient'               : hp.choice('gp+clip_gradient', [10]), 
 #
 #            },
                   
             {
                 'type'                           : 'WaveNetEstimator',
-                'embedding_dimension'            : hp.choice('embedding_dimension', [16]),
-                'num_bins'                       : hp.choice('num_bins', [512]),
-                'n_residue'                      : hp.choice('n_residue', [25]),
+                'embedding_dimension'            : hp.choice('embedding_dimension', [2]),
+                'num_bins'                       : hp.choice('num_bins', [2048]),
+                'n_residue'                      : hp.choice('n_residue', [24]),
                 'n_skip'                         : hp.choice('n_skip', [64]),
-                'dilation_depth'                 : hp.choice('dilation_depth', [3]),
-                'n_stacks'                       : hp.choice('n_stacks', [2]),
+                'dilation_depth'                 : hp.choice('dilation_depth', [4]),
+                'n_stacks'                       : hp.choice('n_stacks', [1]),
                 'wn_act_type'                    : hp.choice('wn_act_type', ['sigmoid']),
                 
-                'wn+max_epochs'                  : hp.choice('wn+max_epochs', [512]),
-                'wn+num_batches_per_epoch'       : hp.choice('wn+num_batches_per_epoch', [256]),
-                'wn+batch_size'                  : hp.choice('wn+batch_size', [256]),
+                'wn+max_epochs'                  : hp.choice('wn+max_epochs', [128]),
+                'wn+num_batches_per_epoch'       : hp.choice('wn+num_batches_per_epoch', [512]),
+                'wn+batch_size'                  : hp.choice('wn+batch_size', [64]),
                 'wn+patience'                    : hp.choice('wn+patience', [16]),
                 
-                'wn+learning_rate'               : hp.choice('wn+learning_rate', [0.0007520628447642352]),
-                'wn+learning_rate_decay_factor'  : hp.choice('wn+learning_rate_decay_factor', [0.2127886315080748]),
-                'wn+minimum_learning_rate'       : hp.choice('wn+minimum_learning_rate', [0.000009986817604380617]),
-                'wn+weight_decay'                : hp.choice('wn+weight_decay', [1.6261678380035378e-8]),
-                'wn+clip_gradient'               : hp.choice('wn+clip_gradient', [2.6733478627841794]),
+                'wn+learning_rate'               : hp.choice('wn+learning_rate', [0.0010087136837619813]),
+                'wn+learning_rate_decay_factor'  : hp.choice('wn+learning_rate_decay_factor', [0.46514468191968394]),
+                'wn+minimum_learning_rate'       : hp.choice('wn+minimum_learning_rate', [5.217627637902781e-7]),
+                'wn+weight_decay'                : hp.choice('wn+weight_decay', [1.1021116955627144e-7]),
+                'wn+clip_gradient'               : hp.choice('wn+clip_gradient', [10]),
             },
                    
             {
                 'type'                           : 'TransformerEstimator',
                 'tf_use_xreg'                    : hp.choice('tf_use_xreg', [True]),
-                'model_dim_heads'                : hp.choice('model_dim_heads', [[32, 4]]),
-                'inner_ff_dim_scale'             : hp.choice('inner_ff_dim_scale', [2]),
-                'pre_seq'                        : hp.choice('pre_seq', ['dn']),
-                'post_seq'                       : hp.choice('post_seq', ['ndr']),
+                'model_dim_heads'                : hp.choice('model_dim_heads', [[16, 4]]),
+                'inner_ff_dim_scale'             : hp.choice('inner_ff_dim_scale', [3]),
+                'pre_seq'                        : hp.choice('pre_seq', ['nd']),
+                'post_seq'                       : hp.choice('post_seq', ['d']),
                 'tf_act_type'                    : hp.choice('tf_act_type', ['relu']),               
-                'tf_dropout_rate'                : hp.choice('tf_dropout_rate', [0.1168076758687597]),
+                'tf_dropout_rate'                : hp.choice('tf_dropout_rate', [0.09227239771946842]),
                 
                 'tf+max_epochs'                  : hp.choice('tf+max_epochs', [1024]),
-                'tf+num_batches_per_epoch'       : hp.choice('tf+num_batches_per_epoch', [32]),
+                'tf+num_batches_per_epoch'       : hp.choice('tf+num_batches_per_epoch', [512]),
                 'tf+batch_size'                  : hp.choice('tf+batch_size', [32]),
-                'tf+patience'                    : hp.choice('tf+patience', [64]),
+                'tf+patience'                    : hp.choice('tf+patience', [32]),
                 
-                'tf+learning_rate'               : hp.choice('tf+learning_rate', [0.001237237781257845]),
-                'tf+learning_rate_decay_factor'  : hp.choice('tf+learning_rate_decay_factor', [0.47146980618805767]),
-                'tf+minimum_learning_rate'       : hp.choice('tf+minimum_learning_rate', [0.0000070503286849093775]),
-                'tf+weight_decay'                : hp.choice('tf+weight_decay', [6.552291583337e-9]),
-                'tf+clip_gradient'               : hp.choice('tf+clip_gradient', [9.755665683958142]),
+                'tf+learning_rate'               : hp.choice('tf+learning_rate', [0.0006788500270020236]),
+                'tf+learning_rate_decay_factor'  : hp.choice('tf+learning_rate_decay_factor', [0.3538768351296254]),
+                'tf+minimum_learning_rate'       : hp.choice('tf+minimum_learning_rate', [6.596578997096586e-7]),
+                'tf+weight_decay'                : hp.choice('tf+weight_decay', [3.570848234535124e-8]),
+                'tf+clip_gradient'               : hp.choice('tf+clip_gradient', [10]),
             },
 
             {
                 'type'                           : 'DeepAREstimator',
                 'da_cell_type'                   : hp.choice('da_cell_type', ['lstm']),
                 'da_use_xreg'                    : hp.choice('da_use_xreg', [True]),
-                'da_num_cells'                   : hp.choice('da_num_cells', [512]),
-                'da_num_layers'                  : hp.choice('da_num_layers', [3]),
+                'da_num_cells'                   : hp.choice('da_num_cells', [256]),
+                'da_num_layers'                  : hp.choice('da_num_layers', [1]),
                 
-                'da_dropout_rate'                : hp.choice('da_dropout_rate', [0.07138173893167203]),
+                'da_dropout_rate'                : hp.choice('da_dropout_rate', [0.1089075818868427]),
                 
                 'da+max_epochs'                  : hp.choice('da+max_epochs', [128]),
-                'da+num_batches_per_epoch'       : hp.choice('da+num_batches_per_epoch', [256]),
-                'da+batch_size'                  : hp.choice('da+batch_size', [32]),
-                'da+patience'                    : hp.choice('da+patience', [8]),
+                'da+num_batches_per_epoch'       : hp.choice('da+num_batches_per_epoch', [128]),
+                'da+batch_size'                  : hp.choice('da+batch_size', [256]),
+                'da+patience'                    : hp.choice('da+patience', [16]),
                 
-                'da+learning_rate'               : hp.choice('da+learning_rate', [0.0024662237237407514]),
-                'da+learning_rate_decay_factor'  : hp.choice('da+learning_rate_decay_factor', [0.16667217194294942]),
-                'da+minimum_learning_rate'       : hp.choice('da+minimum_learning_rate', [0.00003181948013529227]),
-                'da+weight_decay'                : hp.choice('da+weight_decay', [1.538154835980446e-8]),
-                'da+clip_gradient'               : hp.choice('da+clip_gradient', [6.121571111575984]),
+                'da+learning_rate'               : hp.choice('da+learning_rate', [0.003045598318716111]),
+                'da+learning_rate_decay_factor'  : hp.choice('da+learning_rate_decay_factor', [0.6129714547274026]),
+                'da+minimum_learning_rate'       : hp.choice('da+minimum_learning_rate', [1.0010053206086294e-7]),
+                'da+weight_decay'                : hp.choice('da+weight_decay', [1.4042066931387e-7]),
+                'da+clip_gradient'               : hp.choice('da+clip_gradient', [10]),
             },
 
 #            {

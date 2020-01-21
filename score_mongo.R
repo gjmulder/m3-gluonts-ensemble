@@ -89,13 +89,14 @@ for (idx1 in 1:length(uniq_model_types)) {
       data.frame(
         model.type = paste0(comb[idx2,], collapse = "+"),
         number.models = length(col_idx),
-        sMAPE = errs[['sMAPE']],
-        MASE = errs[['MASE']]
+        MASE = errs[['MASE']],
+        sMAPE = errs[['sMAPE']]
       )
     # print(result)
     results <- rbind(results, result)
   }
 }
+write.csv(results, file = "ensemble_results.csv", row.names = FALSE, quote = FALSE)
 
 # # Ensembled, leave one model type out
 # for (model_type in uniq_model_types) {
