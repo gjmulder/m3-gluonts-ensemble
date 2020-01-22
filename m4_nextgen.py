@@ -93,7 +93,6 @@ def compute_horiz_errs(test_data, forecasts, num_ts):
 
         y_hat = forecasts[idx].samples.reshape(-1)
         y_hats[str(idx)] = y_hat.tolist()
-        
 #        y_hat06 = y_hat[-prediction_length:(-prediction_length+6)]
 #        y_hat12 = y_hat[(-prediction_length+6):(-prediction_length+12)]
 #        y_hat18 = y_hat[-6:]
@@ -124,6 +123,7 @@ def compute_horiz_errs(test_data, forecasts, num_ts):
 #        'mase18'  : np.nanmean(mases18),
 #    }
     
+    print(y_hats)
     return y_hats
 
 def score_model(model, model_type, gluon_test_data, num_ts):
@@ -342,8 +342,8 @@ def forecast(cfg):
     
     logger.info("Fitting: %s" % estimator)
     gluon_train = ListDataset(train_data['train'].copy(), freq=freq_pd)
+    model = estimator.train(gluon_train)
     gluon_validate = ListDataset(train_data['test'].copy(), freq=freq_pd)
-    model = estimator.train(gluon_train, validation_data=gluon_validate)
     validate_errs, forecasts = score_model(model, cfg['model']['type'], gluon_validate, num_ts)
     logger.info("Validation error: %s" % validate_errs)
 
