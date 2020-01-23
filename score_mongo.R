@@ -11,8 +11,7 @@ options(width = 150)
 
 con <-
   mongo("jobs",
-        "m3_monthly-final_rnd_6-18_mon",
-        # "m3_monthly-final_rnd_1-step",
+        "m3_monthly-final_rnd_1-step",
         url = "mongodb://heika:27017",
         verbose = TRUE)
 mydata <- con$find()
@@ -57,12 +56,6 @@ ensemble_fcasts <- function(col_idx) {
   fcasts_df <- mydata$result$err_metrics$y_hats[col_idx, ]
   smapes <- c()
   mases <- c()
-  smapes6 <- c()
-  mases6 <- c()
-  smapes12 <- c()
-  mases12 <- c()
-  smapes18 <- c()
-  mases18 <- c()
 
   for (idx in c(1:length(fcasts_df))) {
     # print(idx)
@@ -72,37 +65,16 @@ ensemble_fcasts <- function(col_idx) {
 
     test_row <- fromJSON(res[idx])
     in_sample <- head(test_row$target, length(test_row$target) - 18)
-    y_test <- tail(test_row$target, 18)
+    y_test <- head(tail(test_row$target, 18), 1)
 
     smapes <- c(smapes, smape_cal(y_test, y_hat))
     mases <- c(mases, mase_cal(in_sample, y_test, y_hat))
-
-    y_hat6  <- y_hat[1:6]
-    y_test6 <- y_test[1:6]
-    smapes6 <- c(smapes6, smape_cal(y_test6, y_hat6))
-    mases6 <- c(mases6, mase_cal(in_sample, y_test6, y_hat6))
-
-    y_hat12  <- y_hat[7:12]
-    y_test12 <- y_test[7:12]
-    smapes12 <- c(smapes12, smape_cal(y_test12, y_hat12))
-    mases12 <- c(mases12, mase_cal(in_sample, y_test12, y_hat12))
-
-    y_hat18  <- y_hat[13:18]
-    y_test18 <- y_test[13:18]
-    smapes18 <- c(smapes18, smape_cal(y_test18, y_hat18))
-    mases18 <- c(mases18, mase_cal(in_sample, y_test18, y_hat18))
 
   }
   return(
     list(
       sMAPE = mean(smapes),
-      MASE = mean(mases),
-      sMAPE6 = mean(smapes6),
-      MASE6 = mean(mases6),
-      sMAPE12 = mean(smapes12),
-      MASE12 = mean(mases12),
-      sMAPE18 = mean(smapes18),
-      MASE18 = mean(mases18)
+      MASE = mean(mases)
     )
   )
 }
@@ -124,20 +96,14 @@ for (idx1 in 1:length(uniq_model_types)) {
     col_idx <- c()
     for (model_type in comb[idx2, ]) {
       model_col_idx <- which(model_type == model_types)
-      col_idx <- c(col_idx, sample(model_col_idx, 50))
+      col_idx <- c(col_idx, model_col_idx)
       print(length(col_idx))
     }
     errs <- ensemble_fcasts(col_idx)
      result <-
       data.frame(
         model.type = paste0(comb[idx2, ], collapse = "+"),
-        MASE6   = errs[['MASE6']],
-        MASE12  = errs[['MASE12']],
-        MASE18  = errs[['MASE18']],
         MASE    = errs[['MASE']],
-        sMAPE6  = errs[['sMAPE6']],
-        sMAPE12 = errs[['sMAPE12']],
-        sMAPE18 = errs[['sMAPE18']],
         sMAPE   = errs[['sMAPE']]
       )
     print(result)
@@ -146,43 +112,6 @@ for (idx1 in 1:length(uniq_model_types)) {
 }
 write.csv(results, file = "ensemble_results.csv", row.names = FALSE, quote = FALSE)
 print(results)
-
-## Sampling
-## col_idx_all <- which(!is.na(model_types) & model_types == "TransformerEstimator")
-#col_idx_all <-
-#  which(!is.na(model_types))
-#results <-
-#  data.frame(
-#    model.type = character(),
-#    number.models = integer(),
-#    MASE = double(),
-#    sMAPE = double()
-#  )
-#for (num_samples in c(10:length(col_idx_all))) {
-#  col_idx <- sample(col_idx_all, size = num_samples)
-#  errs <- ensemble_fcasts(col_idx)
-#  result <-
-#    data.frame(
-#      number.models = length(col_idx),
-#      MASE    = errs[['MASE']]
-#    )
-#  print(result)
-#  results <- rbind(results, result)
-#}
-# write.csv(results,
-#           file = "ensemble_results.csv",
-#           row.names = FALSE,
-#           quote = FALSE)
-# print(results)
-
-gg <-
-  ggplot(results, aes(x = number.models, y = MASE)) +
-  geom_point(size = 0.1) +
-  geom_smooth(size = 0.5, se = FALSE) +
-  labs(title = "18 month forecast MASE versus number of ensembled models",
-       x = "Number of models",
-       y = "MASE")
-print(gg)
 
 # for (model_type in uniq_model_types) {
 #   col_idx <- which(model_types == model_type)
@@ -196,10 +125,10 @@ print(gg)
 #   print(gg)
 # }
 
-# tibble(model.type = model_types, book.time = ymd_hms(mydata$book_time, tz = "EET"), refresh.time = ymd_hms(mydata$refresh_time, tz = "EET")) %>%
-#   mutate(duration = refresh.time - book.time) ->
-#   timings
+tibble(model.type = model_types, book.time = ymd_hms(mydata$book_time, tz = "EET"), refresh.time = ymd_hms(mydata$refresh_time, tz = "EET")) %>%
+  mutate(duration = refresh.time - book.time) ->
+  timings
 #
-# timings %>%
-#   group_by(model.type) %>%
-#   summarise(mean(duration))
+timings %>%
+  group_by(model.type) %>%
+  summarise(mean(duration))
