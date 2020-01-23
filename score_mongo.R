@@ -108,13 +108,14 @@ ensemble_fcasts <- function(col_idx) {
 }
 
 uniq_model_types <- sort(unique(model_types))
+
 results <-
   data.frame(
     model.type = character(),
     number.models = integer(),
     MASE = double(),
     sMAPE = double()
-  )
+   )
 for (idx1 in 1:length(uniq_model_types)) {
   comb <-
     combinations(length(uniq_model_types), idx1, uniq_model_types)
@@ -122,11 +123,12 @@ for (idx1 in 1:length(uniq_model_types)) {
     print(comb[idx2, ])
     col_idx <- c()
     for (model_type in comb[idx2, ]) {
-      col_idx <- c(col_idx, which(model_type == model_types))
+      model_col_idx <- which(model_type == model_types)
+      col_idx <- c(col_idx, sample(model_col_idx, 50))
       print(length(col_idx))
     }
     errs <- ensemble_fcasts(col_idx)
-    result <-
+     result <-
       data.frame(
         model.type = paste0(comb[idx2, ], collapse = "+"),
         MASE6   = errs[['MASE6']],
@@ -145,35 +147,28 @@ for (idx1 in 1:length(uniq_model_types)) {
 write.csv(results, file = "ensemble_results.csv", row.names = FALSE, quote = FALSE)
 print(results)
 
-# Sampling
-# col_idx_all <- which(!is.na(model_types) & model_types == "TransformerEstimator")
-col_idx_all <-
-  which(!is.na(model_types))
-results <-
-  data.frame(
-    model.type = character(),
-    number.models = integer(),
-    MASE = double(),
-    sMAPE = double()
-  )
-for (num_samples in c(10:length(col_idx_all))) {
-  col_idx <- sample(col_idx_all, size = num_samples)
-  errs <- ensemble_fcasts(col_idx)
-  result <-
-    data.frame(
-      number.models = length(col_idx),
-      MASE6   = errs[['MASE6']],
-      MASE12  = errs[['MASE12']],
-      MASE18  = errs[['MASE18']],
-      MASE    = errs[['MASE']],
-      sMAPE6  = errs[['sMAPE6']],
-      sMAPE12 = errs[['sMAPE12']],
-      sMAPE18 = errs[['sMAPE18']],
-      sMAPE   = errs[['sMAPE']]
-    )
-  print(result)
-  results <- rbind(results, result)
-}
+## Sampling
+## col_idx_all <- which(!is.na(model_types) & model_types == "TransformerEstimator")
+#col_idx_all <-
+#  which(!is.na(model_types))
+#results <-
+#  data.frame(
+#    model.type = character(),
+#    number.models = integer(),
+#    MASE = double(),
+#    sMAPE = double()
+#  )
+#for (num_samples in c(10:length(col_idx_all))) {
+#  col_idx <- sample(col_idx_all, size = num_samples)
+#  errs <- ensemble_fcasts(col_idx)
+#  result <-
+#    data.frame(
+#      number.models = length(col_idx),
+#      MASE    = errs[['MASE']]
+#    )
+#  print(result)
+#  results <- rbind(results, result)
+#}
 # write.csv(results,
 #           file = "ensemble_results.csv",
 #           row.names = FALSE,
@@ -186,7 +181,7 @@ gg <-
   geom_smooth(size = 0.5, se = FALSE) +
   labs(title = "18 month forecast MASE versus number of ensembled models",
        x = "Number of models",
-       y = "18 month MASE")
+       y = "MASE")
 print(gg)
 
 # for (model_type in uniq_model_types) {
