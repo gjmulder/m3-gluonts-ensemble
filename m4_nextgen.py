@@ -173,6 +173,7 @@ def forecast(cfg):
 #    )
 
     trainer_cfg = get_trainer_hyperparams(cfg['model'])
+    print(trainer_cfg)
     trainer=Trainer(
         mx.Context("gpu"),
         hybridize=False,

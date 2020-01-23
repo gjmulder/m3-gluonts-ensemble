@@ -17,37 +17,49 @@ basicConfig(level = log_level,
             datefmt ='%Y-%m-%d %H:%M:%S')
 logger = getLogger(__name__)
 
-from m4_nextgen import rand_seed, gluonts_fcast
-import mxnet as mx
-import numpy as np
+from m4_nextgen import gluonts_fcast
 from pprint import pformat
-
-mx.random.seed(rand_seed, ctx='all')
-np.random.seed(rand_seed)
     
 if __name__ == "__main__":
-#                "loss" : 4.2914122848614324,
-#                "status" : "ok",
+#            {
+#                'type'                           : 'DeepAREstimator',
+#                'da_cell_type'                   : hp.choice('da_cell_type', ['lstm']),
+#                'da_use_xreg'                    : hp.choice('da_use_xreg', [True]),
+#                'da_num_cells'                   : hp.choice('da_num_cells', [512]),
+#                'da_num_layers'                  : hp.choice('da_num_layers', [3]),
+#                
+#                'da_dropout_rate'                : hp.choice('da_dropout_rate', [0.07138173893167203]),
+#                
+#                'da+max_epochs'                  : hp.choice('da+max_epochs', [128]),
+#                'da+num_batches_per_epoch'       : hp.choice('da+num_batches_per_epoch', [256]),
+#                'da+batch_size'                  : hp.choice('da+batch_size', [32]),
+#                'da+patience'                    : hp.choice('da+patience', [8]),
+#                
+#                'da+learning_rate'               : hp.choice('da+learning_rate', [0.0024662237237407514]),
+#                'da+learning_rate_decay_factor'  : hp.choice('da+learning_rate_decay_factor', [0.16667217194294942]),
+#                'da+minimum_learning_rate'       : hp.choice('da+minimum_learning_rate', [0.00003181948013529227]),
+#                'da+weight_decay'                : hp.choice('da+weight_decay', [1.538154835980446e-8]),
+#                'da+clip_gradient'               : hp.choice('da+clip_gradient', [6.121571111575984]),
+#            },
     cfg = {
             "box_cox" : False,
+            'rand_seed' : 4242,
             "model" : {
                     "da_cell_type" : "lstm",
-                    "da_dropout_rate" : 0.07351329068782851,
-                    "da_num_cells" : 128,
-                    "da_num_layers" : 4,
+                    "da_dropout_rate" : 0.07138173893167203,
+                    "da_num_cells" : 512,
+                    "da_num_layers" : 3,
                     "da_use_xreg" : True,
-                    "type" : "DeepAREstimator"
-            },
-            "trainer" : {
-                    "batch_size" : 512,
-                    "clip_gradient" : 3.8803777267641415,
-                    "learning_rate" : 0.001634652644908689,
-                    "learning_rate_decay_factor" : 0.714819374291207,
-                    "max_epochs" : 1024,
-                    "minimum_learning_rate" : 0.000005066238764992976,
-                    "num_batches_per_epoch" : 128,
-                    "patience" : 32,
-                    "weight_decay" : 8.854690077553568e-9
+                    "type" : "DeepAREstimator",
+                    "da+batch_size" : 32,
+                    "da+clip_gradient" : 6.121571111575984,
+                    "da+learning_rate" : 0.0024662237237407514,
+                    "da+learning_rate_decay_factor" : 0.16667217194294942,
+                    "da+max_epochs" : 128,
+                    "da+minimum_learning_rate" : 0.00003181948013529227,
+                    "da+num_batches_per_epoch" : 256,
+                    "da+patience" : 8,
+                    "da+weight_decay" : 1.538154835980446e-8
             }
         }
 
