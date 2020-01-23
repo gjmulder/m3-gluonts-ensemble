@@ -78,53 +78,13 @@ def mase(insample, y_test, y_hat_test, freq):
 
     return np.mean(abs(y_test - y_hat_test)) / masep
 
-def compute_horiz_errs(test_data, forecasts, num_ts):
+def get_yhats(test_data, forecasts, num_ts):
     y_hats = {}
-    smapes, smapes06, smapes12, smapes18 = [], [], [], []
-    mases, mases06, mases12, mases18 = [], [], [], []
-    
     for idx in range(num_ts):
-        in_sample = test_data[idx]['target'][:-prediction_length]
-
-        y_test = test_data[idx]['target'][-prediction_length:]
-        y_test06 = y_test[-prediction_length:(-prediction_length+6)]
-        y_test12 = y_test[(-prediction_length+6):(-prediction_length+12)]
-        y_test18 = y_test[-6:]
-
         y_hat = forecasts[idx].samples.reshape(-1)
         y_hats[str(idx)] = y_hat.tolist()
-        
-        y_hat06 = y_hat[-prediction_length:(-prediction_length+6)]
-        y_hat12 = y_hat[(-prediction_length+6):(-prediction_length+12)]
-        y_hat18 = y_hat[-6:]
-
-        smapes.append(smape(y_test, y_hat))
-        mases.append(mase(in_sample, y_test, y_hat, freq))
-
-        smapes06.append(smape(y_test06, y_hat06))
-        mases06.append(mase(in_sample, y_test06, y_hat06, freq))
-
-        smapes12.append(smape(y_test12, y_hat12))        
-        mases12.append(mase(in_sample, y_test12, y_hat12, freq))
-
-        smapes18.append(smape(y_test18, y_hat18))
-        mases18.append(mase(in_sample, y_test18, y_hat18, freq))
-    
-    errs = {
-        'smape'   : np.nanmean(smapes),
-        'mase'    : np.nanmean(mases),
-
-        'smape06' : np.nanmean(smapes06),
-        'mase06'  : np.nanmean(mases06),
-    
-        'smape12' : np.nanmean(smapes12),
-        'mase12'  : np.nanmean(mases12),
-
-        'smape18' : np.nanmean(smapes18),
-        'mase18'  : np.nanmean(mases18),
-    }
-    
-    return errs, y_hats
+            
+    return y_hats
 
 def score_model(model, model_type, gluon_test_data, num_ts):
     import mxnet as mx
@@ -352,13 +312,11 @@ def forecast(cfg):
 #    test_errs, forecasts = score_model(model, cfg['model']['type'], gluon_test, num_ts)
 #    logger.info("Testing error : %s" % test_errs)
 
-    horiz_errs, y_hats = compute_horiz_errs(train_data['test'], forecasts, num_ts)
-    logger.info("Horizon error : %s" % horiz_errs)
+    y_hats = get_yhats(train_data['test'], forecasts, num_ts)
     
     return {
         'validate' : validate_errs,
 #        'test'     : test_errs,
-        'horizon'  : horiz_errs,
         'y_hats'   : y_hats
     }
 
