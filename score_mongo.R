@@ -37,7 +37,8 @@ gc()
 
 model_types <- mydata$result$cfg$model$type
 res <-
-  readLines(paste0("/var/tmp/", data_set, "_all/test/data.json"))
+  # readLines(paste0("/var/tmp/", data_set, "_all/test/data.json"))
+  readLines("/home/mulderg/Work/plos1-m3/m3_monthly_all_test/test/data.json")
 
 smape_cal <- function(outsample, forecasts) {
   #Used to estimate sMAPE
@@ -101,21 +102,20 @@ for (idx1 in 1:length(uniq_model_types)) {
   comb <-
     combinations(length(uniq_model_types), idx1, uniq_model_types)
   for (idx2 in 1:nrow(comb)) {
-    print(comb[idx2,])
     col_idx <- c()
     for (model_type in comb[idx2,]) {
       model_col_idx <- which(model_type == model_types)
-      col_idx <- c(col_idx, sample(model_col_idx, 50))
-      print(length(col_idx))
+      # col_idx <- c(col_idx, sample(model_col_idx, 50))
+      col_idx <- c(col_idx, model_col_idx)
     }
     errs <- ensemble_fcasts(col_idx)
     result <-
       data.frame(
         model.type = paste0(comb[idx2,], collapse = "+"),
+        number.models = length(col_idx),
         MASE    = errs[['MASE']],
         sMAPE   = errs[['sMAPE']]
       )
-    print(result)
     results <- rbind(results, result)
   }
 }
@@ -136,11 +136,12 @@ results <-
     MASE = double(),
     sMAPE = double()
   )
-for (num_samples in c(10:length(col_idx_all))) {
+for (num_samples in c(25:length(col_idx_all))) {
   col_idx <- sample(col_idx_all, size = num_samples)
   errs <- ensemble_fcasts(col_idx)
   result <-
     data.frame(number.models = length(col_idx),
+               sMAPE   = errs[['sMAPE']],
                MASE    = errs[['MASE']])
   print(result)
   results <- rbind(results, result)
@@ -149,17 +150,17 @@ write.csv(results,
           file = "ensemble_err_vs_size.csv",
           row.names = FALSE,
           quote = FALSE)
-print(results)
 
 gg <-
-  ggplot(results, aes(x = number.models, y = MASE)) +
+  ggplot(results, aes(x = number.models, y = sMAPE)) +
   geom_point(size = 0.1) +
   geom_smooth(size = 0.5, se = FALSE) +
   labs(title = "Forecast MASE versus number of ensembled models",
        x = "Number of models",
-       y = "MASE")
-print(gg)
+       y = "sMAPE")
+ggsave("ensemble_err_vs_size.png", gg, width = 8, height = 6)
 
+# Timings
 tibble(
   model.type = model_types,
   book.time = ymd_hms(mydata$book_time, tz = "EET"),
