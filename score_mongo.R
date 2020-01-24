@@ -143,13 +143,14 @@ for (num_samples in c(25:length(col_idx_all))) {
     data.frame(number.models = length(col_idx),
                sMAPE   = errs[['sMAPE']],
                MASE    = errs[['MASE']])
-  print(result)
+
   results <- rbind(results, result)
 }
 write.csv(results,
           file = "ensemble_err_vs_size.csv",
           row.names = FALSE,
           quote = FALSE)
+print(results)
 
 gg <-
   ggplot(results, aes(x = number.models, y = sMAPE)) +
