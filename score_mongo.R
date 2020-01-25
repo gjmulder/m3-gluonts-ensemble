@@ -37,8 +37,8 @@ gc()
 
 model_types <- mydata$result$cfg$model$type
 res <-
-  # readLines(paste0("/var/tmp/", data_set, "_all/test/data.json"))
-  readLines("/home/mulderg/Work/plos1-m3/m3_monthly_all_test/test/data.json")
+  readLines(paste0("/var/tmp/", data_set, "_all/test/data.json"))
+  # readLines("/home/mulderg/Work/plos1-m3/m3_monthly_all_test/test/data.json")
 
 smape_cal <- function(outsample, forecasts) {
   #Used to estimate sMAPE
@@ -120,7 +120,7 @@ for (idx1 in 1:length(uniq_model_types)) {
   }
 }
 write.csv(results,
-          file = "ensemble_combination_results.csv",
+          file = paste0(data_set, "-", version, "-ensemble_combination_results.csv"),
           row.names = FALSE,
           quote = FALSE)
 print(results)
@@ -147,7 +147,7 @@ for (num_samples in c(25:length(col_idx_all))) {
   results <- rbind(results, result)
 }
 write.csv(results,
-          file = "ensemble_err_vs_size.csv",
+          file = paste0(data_set, "-", version, "-ensemble_err_vs_size.csv"),
           row.names = FALSE,
           quote = FALSE)
 print(results)
@@ -159,7 +159,7 @@ gg <-
   labs(title = "Forecast MASE versus number of ensembled models",
        x = "Number of models",
        y = "sMAPE")
-ggsave("ensemble_err_vs_size.png", gg, width = 8, height = 6)
+ggsave(paste0(data_set, "-", version, "-ensemble_err_vs_size.png"), gg, width = 8, height = 6)
 
 # Timings
 tibble(
@@ -173,7 +173,7 @@ tibble(
   timings
 
 write.csv(timings,
-          file = "timings.csv",
+          file = paste0(data_set, "-", version, "-timings.csv"),
           row.names = FALSE,
           quote = FALSE)
 print(timings)
