@@ -23,7 +23,7 @@ model_counts <-
 
 mongo_plot_data <-
   mongo_data %>%
-  filter(train.MASE < (max_err * 5)) %>%
+  # filter(train.MASE < (max_err * 5)) %>%
   inner_join(model_counts) %>%
   mutate(search.time = (as.numeric(end.time) - min(as.numeric(end.time))) / 3600) %>%
   mutate(training.time = (as.numeric(end.time) - as.numeric(start.time)) / 3600)
@@ -50,7 +50,7 @@ gg_train_mase_per_model <-
     colour = "red",
     na.rm = TRUE
   ) +
-  coord_cartesian(ylim = c(min_err, max_err)) +
+  # coord_cartesian(ylim = c(min_err, max_err)) +
   labs(
     title = "Training MASE Trend per Model vs. HyperOpt Search time",
     subtitle = subtitle,
