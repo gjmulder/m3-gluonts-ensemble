@@ -18,7 +18,7 @@ import numpy as np
 from pprint import pformat
 from datetime import date
 
-from hyperopt import fmin, rand, hp, space_eval, STATUS_FAIL, STATUS_OK
+from hyperopt import fmin, tpe, rand, hp, space_eval, STATUS_FAIL, STATUS_OK
 from hyperopt.mongoexp import MongoTrials
 from os import environ
 
@@ -50,33 +50,33 @@ freq_pd = "12M"
 freq = 1
 prediction_length = 6
 
-def smape(a, b):
-    """
-    Calculates sMAPE
-    :param a: actual values
-    :param b: predicted values
-    :return: sMAPE
-    """
-    a = np.reshape(a, (-1,))
-    b = np.reshape(b, (-1,))
-    return np.mean(2.0 * np.abs(a - b) / (np.abs(a) + np.abs(b))).item()
-
-def mase(insample, y_test, y_hat_test, freq):
-    """
-    Calculates MASE
-    :param insample: insample data
-    :param y_test: out of sample target values
-    :param y_hat_test: predicted values
-    :param freq: data frequency
-    :return:
-    """
-    y_hat_naive = []
-    for i in range(freq, len(insample)):
-        y_hat_naive.append(insample[(i - freq)])
-
-    masep = np.mean(abs(insample[freq:] - y_hat_naive))
-
-    return np.mean(abs(y_test - y_hat_test)) / masep
+#def smape(a, b):
+#    """
+#    Calculates sMAPE
+#    :param a: actual values
+#    :param b: predicted values
+#    :return: sMAPE
+#    """
+#    a = np.reshape(a, (-1,))
+#    b = np.reshape(b, (-1,))
+#    return np.mean(2.0 * np.abs(a - b) / (np.abs(a) + np.abs(b))).item()
+#
+#def mase(insample, y_test, y_hat_test, freq):
+#    """
+#    Calculates MASE
+#    :param insample: insample data
+#    :param y_test: out of sample target values
+#    :param y_hat_test: predicted values
+#    :param freq: data frequency
+#    :return:
+#    """
+#    y_hat_naive = []
+#    for i in range(freq, len(insample)):
+#        y_hat_naive.append(insample[(i - freq)])
+#
+#    masep = np.mean(abs(insample[freq:] - y_hat_naive))
+#
+#    return np.mean(abs(y_test - y_hat_test)) / masep
 
 def get_yhats(test_data, forecasts, num_ts):
     y_hats = {}
@@ -354,10 +354,10 @@ def gluonts_fcast(cfg):
 def call_hyperopt():
 
     # Trainer hyperparams common to all models
-    max_epochs = [32, 64, 128, 256, 512, 1024]
-    num_batches_per_epoch = [32, 64, 128, 256, 512]
-    batch_size = [32, 64, 128, 256]
-    patience = [8, 16, 32, 64]
+    max_epochs = [128, 256, 512, 1024]
+    num_batches_per_epoch = [32, 64, 128, 256]
+    batch_size = [32, 64, 128]
+    patience = [8, 16, 32]
     learning_rate = {
         'min' : np.log(05e-04),
         'max' : np.log(50e-04)
@@ -379,9 +379,13 @@ def call_hyperopt():
         'max' : 10
     }
     
+#    dropout_rate = {
+#        'min' : 0.07,
+#        'max' : 0.13
+#    }
     dropout_rate = {
-        'min' : 0.07,
-        'max' : 0.13
+        'min' : 0.01,
+        'max' : 0.02
     }
     
     space = {
@@ -540,7 +544,7 @@ def call_hyperopt():
         exp_key = "%s" % str(date.today())
         logger.info("exp_key for this job is: %s" % exp_key)
         trials = MongoTrials('mongo://heika:27017/%s-%s/jobs' % (dataset_name, version), exp_key=exp_key)
-        best = fmin(gluonts_fcast, space, rstate=np.random.RandomState(42), algo=rand.suggest, show_progressbar=False, trials=trials, max_evals=1000)
+        best = fmin(gluonts_fcast, space, rstate=np.random.RandomState(42), algo=tpe.suggest, show_progressbar=False, trials=trials, max_evals=1000)
     else:
         best = fmin(gluonts_fcast, space, algo=rand.suggest, show_progressbar=False, max_evals=20)
          
