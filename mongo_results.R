@@ -50,7 +50,7 @@ gg_train_mase_per_model <-
     colour = "red",
     na.rm = TRUE
   ) +
-  # coord_cartesian(ylim = c(min_err, max_err)) +
+  coord_cartesian(ylim = c(min_err, max_err)) +
   labs(
     title = "Training MASE Trend per Model vs. HyperOpt Search time",
     subtitle = subtitle,
