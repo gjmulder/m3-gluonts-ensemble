@@ -4,6 +4,7 @@ library(matrixStats)
 library(lubridate)
 library(gtools)
 library(dplyr)
+# library(ggpubr)
 library(ggplot2)
 
 set.seed(42)
@@ -19,10 +20,7 @@ smape_cal <- function(outsample, forecasts) {
 }
 
 mase_cal <- function(insample, outsample, forecasts, frq) {
-  stopifnot(!is.na(insample),
-            !is.na(outsample),
-            !is.na(forecasts),
-            !is.na(frq))
+  stopifnot(!is.na(insample),!is.na(outsample),!is.na(forecasts),!is.na(frq))
 
   # Used to estimate MASE
   forecastsNaiveSD <- rep(NA, frq)
@@ -36,16 +34,17 @@ mase_cal <- function(insample, outsample, forecasts, frq) {
   forecasts <- as.numeric(forecasts)
   mase <- (abs(outsample - forecasts)) / masep
 
-  stopifnot(!is.na(mase),!is.nan(mase))
+  stopifnot(!is.na(mase), !is.nan(mase))
   return(mase)
 }
 
-ensemble_fcasts <- function(col_idx) {
+ensemble_fcasts <- function(col_idx1, col_idx2) {
   # print(col_idx)
-  fcasts_df <- mongo_data$result$err_metrics$y_hats[col_idx, ]
-  smapes <- c()
-  mases <- c()
+  fcasts_df1 <- mongo_data1$result$err_metrics$y_hats[col_idx1, ]
+  fcasts_df2 <- mongo_data2$result$err_metrics$y_hats[col_idx2, ]
 
+    smapes <- c()
+  mases <- c()
   for (idx in c(1:length(fcasts_df))) {
     # print(idx)
     ts_fcast <-
@@ -67,8 +66,8 @@ ensemble_fcasts <- function(col_idx) {
               MASE = mean(mases)))
 }
 
-build_ensemble <- function(model_set) {
-  uniq_model_types <- sort(unique(model_set$type))
+build_ensemble <- function() {
+  uniq_model_types <- sort(unique(c(model_type_loss1$type, model_type_loss2$type)))
   # print(uniq_model_types)
 
   results_comb <-
@@ -82,18 +81,28 @@ build_ensemble <- function(model_set) {
     comb <-
       combinations(length(uniq_model_types), idx1, uniq_model_types)
     for (idx2 in 1:nrow(comb)) {
-      col_idx <- c()
-      for (model_type in comb[idx2, ]) {
-        model_col_idx <- which(model_type == model_set$type)
-        # model_col_idx <-
-        #   sample(model_col_idx, size = min(timings$`n()`), replace = FALSE)
-        col_idx <- c(col_idx, model_col_idx)
+      col_idx1 <- c()
+      col_idx2 <- c()
+      for (model_type in comb[idx2,]) {
+
+        model_col_idx1 <-
+          model_type_loss1 %>%
+          filter(type == model_type) %>%
+          pull(row.id1)
+        col_idx1 <- c(col_idx1, model_col_idx1)
+
+        model_col_idx2 <-
+          model_type_loss2 %>%
+          filter(type == model_type) %>%
+          pull(row.id2)
+        col_idx2 <- c(col_idx2, model_col_idx2)
+
       }
-      errs <- ensemble_fcasts(col_idx)
+      errs <- ensemble_fcasts(col_idx1, col_idx2)
       result <-
         data.frame(
-          model.type = paste0(comb[idx2, ], collapse = "+"),
-          model.type.count = length(comb[idx2, ]),
+          model.types = paste0(comb[idx2,], collapse = "+"),
+          model.type.count = length(comb[idx2,]),
           total.num.models = length(col_idx),
           MASE    = errs[['MASE']],
           sMAPE   = errs[['sMAPE']]
@@ -106,8 +115,8 @@ build_ensemble <- function(model_set) {
 
 ####################################################################################
 # Get forecasts from MongoDB and test data from .json
-data_set <- "monthly_m3_1045"
 
+data_set <- "m3_monthly"
 if (grepl("monthly", data_set)) {
   frq = 12
 } else if (grepl("quarterly", data_set)) {
@@ -123,31 +132,40 @@ print(paste0("Determined frequency from data set: ", frq))
 
 con <-
   mongo("jobs",
-        "m3_monthly-final_rnd_1-step",
+        paste0("m3_monthly-wide_18month"),
         url = "mongodb://heika:27017",
         verbose = TRUE)
 mongo_data1 <- con$find()
 rm(con)
+gc()
+model_type_loss1 <-
+  tibble(
+    row.id = c(1:length(mongo_data1$result$cfg$model$type)),
+    type = mongo_data1$result$cfg$model$type,
+    loss = mongo_data1$result$loss
+  ) %>%
+  na.omit
+
 con <-
   mongo("jobs",
-        "m3_monthly-final_rnd_6-18_mon",
+        paste0("m3_monthly-final_rnd_6-18_mon"),
         url = "mongodb://heika:27017",
         verbose = TRUE)
-mongo_data2 <- con$find()
+mongo_data1 <- con$find()
 rm(con)
 gc()
-mongo_data <-
-  bind_rows(mongo_data1, mongo_data2)
-
-model_type_loss <-
-    tibble(
-      row.id = c(1:length(mongo_data$result$cfg$model$type)),
-      type = mongo_data$result$cfg$model$type,
-      loss = mongo_data$result$loss
-    )
+model_type_loss2 <-
+  tibble(
+    row.id = c(1:length(mongo_data2$result$cfg$model$type)),
+    type = mongo_data2$result$cfg$model$type,
+    loss = mongo_data2$result$loss
+  ) %>%
+  na.omit
 
 res <-
+  # readLines(paste0("/var/tmp/", data_set, "_all/test/data.json"))
   readLines("/home/mulderg/Work/plos1-m3/m3_monthly_all_1045/test/data.json")
+# readLines("/home/mulderg/Work/plos1-m3/m3_monthly_all/test/data.json")
 
 # ####################################################################################
 # # Timings
@@ -167,27 +185,16 @@ res <-
 ####################################################################################
 # Model combinations
 
-# for (n in c(70, 80, 90, 100)) {
-# model_type_loss %>%
-# filter(type == "DeepAREstimator") ->
-# na.omit %>%
-# group_by(type) %>%
-# sample_n(n, replace = FALSE) ->
-# top_n(-n, loss) ->
-# top_frac(-n/100, loss) ->
-# best_models
-# print(best_models)
-
-build_ensemble(model_type_loss) %>%
+build_ensemble() %>%
   na.omit %>%
-  mutate(model.type = gsub("Estimator", "", model.type)) %>%
+  mutate(model.types = gsub("Estimator", "", model.types)) %>%
   mutate(model.count.fact = factor(paste0(
     total.num.models, " [", model.type.count, "]"
   ))) %>%
   arrange(desc(sMAPE)) ->
   results_comb
 # results_comb$n.star.models <- rep(n, nrow(results_comb))
-print(tail(results_comb[, c("model.type", "total.num.models", "MASE", "sMAPE")], 100))
+print(tail(results_comb[, c("model.types", "total.num.models", "MASE", "sMAPE")], 100))
 #}
 
 gg_comb <-
@@ -195,24 +202,25 @@ gg_comb <-
   mutate(model.count.fact = reorder(model.count.fact, total.num.models)) %>%
   ggplot(aes(x = model.count.fact, y = sMAPE)) +
   geom_violin() +
-  # scale_y_log10() +
   stat_summary(
     fun.y = median,
     geom = "point",
     size = 1,
     color = "red"
   ) +
-  ylim(NA, 25.0) +
   labs(title = "Forecast error versus number of ensembled combinations of models",
        x = "Ensemble Size [Number of model types per ensemble]")
+
+if (interactive()) {
+  print(gg_comb)
+}
 
 ####################################################################################
 # Sampling
 
-# col_idx_all <-
-#   which(!is.na(model_type_loss$type) & model_type_loss$type == "TransformerEstimator")
-col_idx_all <-
-  which(!is.na(model_type_loss$type))
+model_type_loss %>%
+  pull(row.id) ->
+  col_idx_all
 
 results_size <-
   data.frame(
@@ -222,7 +230,7 @@ results_size <-
     sMAPE = double()
   )
 for (num_samples in c(25:length(col_idx_all))) {
-  col_idx <- sample(col_idx_all, size = num_samples, replace = TRUE)
+  col_idx <- sample(col_idx_all, size = num_samples, replace = FALSE)
   errs <- ensemble_fcasts(col_idx)
   result <-
     data.frame(
@@ -230,7 +238,6 @@ for (num_samples in c(25:length(col_idx_all))) {
       sMAPE   = errs[['sMAPE']],
       MASE    = errs[['MASE']]
     )
-
   results_size <- rbind(results_size, result)
 }
 
@@ -238,18 +245,25 @@ gg_size <-
   ggplot(results_size, aes(x = number.models, y = sMAPE)) +
   geom_point(size = 0.1) +
   geom_smooth(size = 0.5, se = FALSE) +
+  # stat_regline_equation(
+  #   aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~~")),
+  #   label.x = 150,
+  #   label.y = 15.0,
+  #   colour = "red",
+  #   na.rm = TRUE
+  # )
   labs(title = "Forecast error versus number of ensembled models",
        x = "Number of models")
 
 if (!interactive()) {
   options(width = 1000)
 
-  # write.csv(
-  #   timings,
-  #   file = paste0(data_set, "-", version, "-timings.csv"),
-  #   row.names = FALSE,
-  #   quote = FALSE
-  # )
+  write.csv(
+    timings,
+    file = paste0(data_set, "-", version, "-timings.csv"),
+    row.names = FALSE,
+    quote = FALSE
+  )
 
   write.csv(
     results_comb,
@@ -280,7 +294,6 @@ if (!interactive()) {
   )
 
 } else {
-  print(gg_comb)
   print(gg_size)
 }
 
