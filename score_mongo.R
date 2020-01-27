@@ -140,8 +140,8 @@ model_type_loss <-
   )
 
 res <-
-  # readLines(paste0("/var/tmp/", data_set, "_all/test/data.json"))
-  readLines("/home/mulderg/Work/plos1-m3/m3_yearly_all/test/data.json")
+  readLines(paste0("/var/tmp/", data_set, "_all/test/data.json"))
+  # readLines("/home/mulderg/Work/plos1-m3/m3_yearly_all/test/data.json")
   # readLines("/home/mulderg/Work/plos1-m3/m3_monthly_all/test/data.json")
 
 ####################################################################################
@@ -200,6 +200,10 @@ gg_comb <-
   ylim(NA, 25.0) +
   labs(title = "Forecast error versus number of ensembled combinations of models",
        x = "Ensemble Size [Number of model types per ensemble]")
+
+if (interactive()) {
+  print(gg_comb)
+}
 
 ####################################################################################
 # Sampling
@@ -273,9 +277,7 @@ if (!interactive()) {
     width = 8,
     height = 6
   )
-
 } else {
-  print(gg_comb)
   print(gg_size)
 }
 
