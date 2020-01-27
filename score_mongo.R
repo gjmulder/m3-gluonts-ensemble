@@ -140,8 +140,8 @@ model_type_loss <-
   )
 
 res <-
-  readLines(paste0("/var/tmp/", data_set, "_all/test/data.json"))
-  #readLines("/home/mulderg/Work/plos1-m3/m3_yearly_all/test/data.json")
+  # readLines(paste0("/var/tmp/", data_set, "_all/test/data.json"))
+  readLines("/home/mulderg/Work/plos1-m3/m3_yearly_all/test/data.json")
   # readLines("/home/mulderg/Work/plos1-m3/m3_monthly_all/test/data.json")
 
 ####################################################################################
