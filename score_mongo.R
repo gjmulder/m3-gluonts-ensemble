@@ -7,6 +7,7 @@ library(dplyr)
 library(ggplot2)
 
 set.seed(42)
+# options(warn=2)
 
 smape_cal <- function(outsample, forecasts) {
   #Used to estimate sMAPE
@@ -36,7 +37,7 @@ mase_cal <- function(insample, outsample, forecasts, frq) {
   forecasts <- as.numeric(forecasts)
   mase <- (abs(outsample - forecasts)) / masep
 
-  stopifnot(!is.na(mase),!is.nan(mase))
+  stopifnot(!is.na(mase), !is.nan(mase))
   return(mase)
 }
 
@@ -84,12 +85,20 @@ build_ensemble <- function(model_set) {
     for (idx2 in 1:nrow(comb)) {
       col_idx <- c()
       for (model_type in comb[idx2, ]) {
-        model_col_idx <- which(model_type == model_set$type)
-        model_col_idx <-
-          sample(model_col_idx, size = min(timings$`n()`), replace = FALSE)
+        model_set %>%
+          filter(model_set$type == model_type) %>%
+          pull(row.id) ->
+          model_col_idx
+        # model_col_idx <-
+        #   sample(model_col_idx, size = min(timings$`n()`), replace = FALSE)
+        # model_col_idx <-
+        #   sample(model_col_idx, size = 50, replace = FALSE)
+        # model_col_idx <-
+        #   sample(model_col_idx, size = 20, replace = TRUE)
         col_idx <- c(col_idx, model_col_idx)
       }
       errs <- ensemble_fcasts(col_idx)
+
       result <-
         data.frame(
           model.type = paste0(comb[idx2, ], collapse = "+"),
@@ -137,12 +146,15 @@ model_type_loss <-
     row.id = c(1:length(mongo_data$result$cfg$model$type)),
     type = mongo_data$result$cfg$model$type,
     loss = mongo_data$result$loss
-  )
+  ) %>%
+  na.omit %>%
+  filter(type != "GaussianProcessEstimator" & type != "DeepFactorEstimator")
 
 res <-
-  readLines(paste0("/var/tmp/", data_set, "_all/test/data.json"))
+  # readLines(paste0("/var/tmp/", data_set, "_all/test/data.json"))
   # readLines("/home/mulderg/Work/plos1-m3/m3_yearly_all/test/data.json")
   # readLines("/home/mulderg/Work/plos1-m3/m3_monthly_all/test/data.json")
+  readLines("/home/mulderg/Work/plos1-m3/m3_quarterly_all/test/data.json")
 
 ####################################################################################
 # Timings
@@ -190,14 +202,13 @@ gg_comb <-
   mutate(model.count.fact = reorder(model.count.fact, total.num.models)) %>%
   ggplot(aes(x = model.count.fact, y = sMAPE)) +
   geom_violin() +
-  # scale_y_log10() +
   stat_summary(
     fun.y = median,
     geom = "point",
     size = 1,
     color = "red"
   ) +
-  ylim(NA, 25.0) +
+  # ylim(NA, 25.0) +
   labs(title = "Forecast error versus number of ensembled combinations of models",
        x = "Ensemble Size [Number of model types per ensemble]")
 
@@ -208,11 +219,6 @@ if (interactive()) {
 ####################################################################################
 # Sampling
 
-# col_idx_all <-
-#   which(!is.na(model_type_loss$type) & model_type_loss$type == "TransformerEstimator")
-col_idx_all <-
-  which(!is.na(model_type_loss$type))
-
 results_size <-
   data.frame(
     model.type = character(),
@@ -220,8 +226,10 @@ results_size <-
     MASE = double(),
     sMAPE = double()
   )
-for (num_samples in c(25:length(col_idx_all))) {
-  col_idx <- sample(col_idx_all, size = num_samples, replace = TRUE)
+for (num_samples in c(1:nrow(model_type_loss))) {
+  col_idx <- sample(model_type_loss$row.id, size = num_samples, replace = TRUE)
+  # print(col_idx)
+  # print(model_type_loss$type[col_idx])
   errs <- ensemble_fcasts(col_idx)
   result <-
     data.frame(
