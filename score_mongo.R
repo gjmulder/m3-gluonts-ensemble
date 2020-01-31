@@ -91,10 +91,10 @@ build_ensemble <- function(model_set) {
           model_col_idx
         # model_col_idx <-
         #   sample(model_col_idx, size = min(timings$`n()`), replace = FALSE)
-        model_col_idx <-
-          sample(model_col_idx, size = 50, replace = FALSE)
         # model_col_idx <-
-        #   sample(model_col_idx, size = 20, replace = TRUE)
+        #   sample(model_col_idx, size = 50, replace = FALSE)
+        model_col_idx <-
+          sample(model_col_idx, size = 20, replace = TRUE)
         col_idx <- c(col_idx, model_col_idx)
       }
       errs <- ensemble_fcasts(col_idx)
@@ -121,10 +121,11 @@ data_set <- as.character(dataset_version[1]) # "m3_yearly"
 version <- as.character(dataset_version[2]) # "complete-v01"
 
 res <-
-  readLines(paste0("/var/tmp/", data_set, "_all/test/data.json"))
+  # readLines(paste0("/var/tmp/", data_set, "_all/test/data.json"))
   # readLines("/home/mulderg/Work/plos1-m3/m3_yearly_all/test/data.json")
   # readLines("/home/mulderg/Work/plos1-m3/m3_monthly_all/test/data.json")
   # readLines("/home/mulderg/Work/plos1-m3/m3_quarterly_all/test/data.json")
+  readLines("/home/mulderg/Work/plos1-m3/m3_other_all/test/data.json")
 
 if (grepl("monthly", data_set)) {
   frq = 12
