@@ -7,6 +7,7 @@ library(dplyr)
 library(ggplot2)
 
 set.seed(42)
+# options(warn=2)
 
 smape_cal <- function(outsample, forecasts) {
   #Used to estimate sMAPE
@@ -36,7 +37,7 @@ mase_cal <- function(insample, outsample, forecasts, frq) {
   forecasts <- as.numeric(forecasts)
   mase <- (abs(outsample - forecasts)) / masep
 
-  stopifnot(!is.na(mase),!is.nan(mase))
+  stopifnot(!is.na(mase), !is.nan(mase))
   return(mase)
 }
 
@@ -84,12 +85,20 @@ build_ensemble <- function(model_set) {
     for (idx2 in 1:nrow(comb)) {
       col_idx <- c()
       for (model_type in comb[idx2, ]) {
-        model_col_idx <- which(model_type == model_set$type)
+        model_set %>%
+          filter(model_set$type == model_type) %>%
+          pull(row.id) ->
+          model_col_idx
+        # model_col_idx <-
+        #   sample(model_col_idx, size = min(timings$`n()`), replace = FALSE)
         model_col_idx <-
-          sample(model_col_idx, size = min(timings$`n()`), replace = FALSE)
+          sample(model_col_idx, size = 50, replace = FALSE)
+        # model_col_idx <-
+        #   sample(model_col_idx, size = 20, replace = TRUE)
         col_idx <- c(col_idx, model_col_idx)
       }
       errs <- ensemble_fcasts(col_idx)
+
       result <-
         data.frame(
           model.type = paste0(comb[idx2, ], collapse = "+"),
@@ -108,8 +117,14 @@ build_ensemble <- function(model_set) {
 # Get forecasts from MongoDB and test data from .json
 
 dataset_version <- Sys.getenv(c("DATASET", "VERSION"))
-data_set <- as.character(dataset_version[1])
-version <- as.character(dataset_version[2])
+data_set <- as.character(dataset_version[1]) # "m3_yearly"
+version <- as.character(dataset_version[2]) # "complete-v01"
+
+res <-
+  readLines(paste0("/var/tmp/", data_set, "_all/test/data.json"))
+  # readLines("/home/mulderg/Work/plos1-m3/m3_yearly_all/test/data.json")
+  # readLines("/home/mulderg/Work/plos1-m3/m3_monthly_all/test/data.json")
+  # readLines("/home/mulderg/Work/plos1-m3/m3_quarterly_all/test/data.json")
 
 if (grepl("monthly", data_set)) {
   frq = 12
@@ -137,12 +152,9 @@ model_type_loss <-
     row.id = c(1:length(mongo_data$result$cfg$model$type)),
     type = mongo_data$result$cfg$model$type,
     loss = mongo_data$result$loss
-  )
-
-res <-
-  readLines(paste0("/var/tmp/", data_set, "_all/test/data.json"))
-  # readLines("/home/mulderg/Work/plos1-m3/m3_yearly_all/test/data.json")
-  # readLines("/home/mulderg/Work/plos1-m3/m3_monthly_all/test/data.json")
+  ) %>%
+  na.omit %>%
+  filter(! type %in% c("GaussianProcessEstimator", "DeepFactorEstimator")) #, "DeepAREstimator"))
 
 ####################################################################################
 # Timings
@@ -190,14 +202,13 @@ gg_comb <-
   mutate(model.count.fact = reorder(model.count.fact, total.num.models)) %>%
   ggplot(aes(x = model.count.fact, y = sMAPE)) +
   geom_violin() +
-  # scale_y_log10() +
   stat_summary(
     fun.y = median,
     geom = "point",
     size = 1,
     color = "red"
   ) +
-  ylim(NA, 25.0) +
+  # ylim(NA, 25.0) +
   labs(title = "Forecast error versus number of ensembled combinations of models",
        x = "Ensemble Size [Number of model types per ensemble]")
 
@@ -208,11 +219,6 @@ if (interactive()) {
 ####################################################################################
 # Sampling
 
-# col_idx_all <-
-#   which(!is.na(model_type_loss$type) & model_type_loss$type == "TransformerEstimator")
-col_idx_all <-
-  which(!is.na(model_type_loss$type))
-
 results_size <-
   data.frame(
     model.type = character(),
@@ -220,8 +226,11 @@ results_size <-
     MASE = double(),
     sMAPE = double()
   )
-for (num_samples in c(25:length(col_idx_all))) {
-  col_idx <- sample(col_idx_all, size = num_samples, replace = TRUE)
+min_samples <- 1
+for (num_samples in c(min_samples:nrow(model_type_loss))) {
+  col_idx <- sample(model_type_loss$row.id, size = num_samples, replace = TRUE)
+  # print(col_idx)
+  # print(model_type_loss$type[col_idx])
   errs <- ensemble_fcasts(col_idx)
   result <-
     data.frame(
@@ -231,14 +240,22 @@ for (num_samples in c(25:length(col_idx_all))) {
     )
 
   results_size <- rbind(results_size, result)
+
+  pct_complete <- round(100 * (num_samples - min_samples) / (nrow(model_type_loss) - min_samples))
+  if (pct_complete %% 10 == 0) {
+    cat(paste0(pct_complete, "%."))
+  }
 }
+print("")
 
 gg_size <-
-  ggplot(results_size, aes(x = number.models, y = sMAPE)) +
+  ggplot(results_size[1:nrow(results_size),], aes(x = number.models, y = sMAPE)) +
   geom_point(size = 0.1) +
-  geom_smooth(size = 0.5, se = FALSE) +
-  labs(title = "Forecast error versus number of ensembled models",
-       x = "Number of models")
+  geom_smooth(size = 0.5, se = TRUE, method = "loess", level = 0.99) +
+  # scale_x_continuous(name = "Number of models", breaks = c(1:6)*50) +
+  # scale_y_continuous(name = "sMAPE", breaks = 12.9 + c(0:5)/10) +
+  # coord_cartesian(xlim=c(0, 300), ylim = c(13, 13.5)) +
+  ggtitle("M3 Quarterly forecast sMAPE versus number of ensembled models (99% confidence interval)")
 
 if (!interactive()) {
   options(width = 1000)
