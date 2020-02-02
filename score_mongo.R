@@ -2,12 +2,13 @@ library(mongolite)
 library(jsonlite)
 library(matrixStats)
 library(lubridate)
+library(inflection)
 library(gtools)
 library(dplyr)
-# library(ggpubr)
 library(ggplot2)
 
 set.seed(42)
+# options(warn=2)
 
 smape_cal <- function(outsample, forecasts) {
   #Used to estimate sMAPE
@@ -37,7 +38,7 @@ mase_cal <- function(insample, outsample, forecasts, frq) {
   forecasts <- as.numeric(forecasts)
   mase <- (abs(outsample - forecasts)) / masep
 
-  stopifnot(!is.na(mase),!is.nan(mase))
+  stopifnot(!is.na(mase), !is.nan(mase))
   return(mase)
 }
 
@@ -68,7 +69,7 @@ ensemble_fcasts <- function(col_idx) {
               MASE = mean(mases)))
 }
 
-build_ensemble <- function(model_set) {
+build_ensemble <- function(model_set, model_mins_scaled) {
   uniq_model_types <- sort(unique(model_set$type))
   # print(uniq_model_types)
 
@@ -85,18 +86,26 @@ build_ensemble <- function(model_set) {
     for (idx2 in 1:nrow(comb)) {
       col_idx <- c()
       for (model_type in comb[idx2, ]) {
+        model_mins_scaled %>%
+          filter(model.type == model_type) %>%
+          pull(number.models) %>%
+          as.integer ->
+          num_models
+
+        model_set %>%
+          filter(model_set$type == model_type) %>%
+          pull(row.id) ->
+          model_col_idx
+
         model_col_idx <-
-          model_set %>%
-          filter(type == model_type) %>%
-          pull(row.id)
-        model_col_idx <-
-          sample(model_col_idx, size = 88, replace = FALSE)
+          sample(model_col_idx, size = num_models, replace = TRUE)
         col_idx <- c(col_idx, model_col_idx)
       }
       errs <- ensemble_fcasts(col_idx)
+
       result <-
         data.frame(
-          model.types = paste0(comb[idx2, ], collapse = "+"),
+          model.type = paste0(comb[idx2, ], collapse = "+"),
           model.type.count = length(comb[idx2, ]),
           total.num.models = length(col_idx),
           MASE    = errs[['MASE']],
@@ -112,8 +121,15 @@ build_ensemble <- function(model_set) {
 # Get forecasts from MongoDB and test data from .json
 
 dataset_version <- Sys.getenv(c("DATASET", "VERSION"))
-data_set <- "m3_yearly" #as.character(dataset_version[1])
-version <- "ensemble-v01" #as.character(dataset_version[2])
+data_set <- "m3_yearly" # as.character(dataset_version[1]) # "m3_yearly"
+version <- "ensemble-v01" #as.character(dataset_version[2]) # "complete-v01"
+
+res <-
+  # readLines(paste0("/var/tmp/", data_set, "_all/test/data.json"))
+  readLines("/home/mulderg/Work/plos1-m3/m3_yearly_all/test/data.json")
+  # readLines("/home/mulderg/Work/plos1-m3/m3_monthly_all/test/data.json")
+  # readLines("/home/mulderg/Work/plos1-m3/m3_quarterly_all/test/data.json")
+  # readLines("/home/mulderg/Work/plos1-m3/m3_other_all/test/data.json")
 
 if (grepl("monthly", data_set)) {
   frq = 12
@@ -142,14 +158,8 @@ model_type_loss <-
     type = mongo_data$result$cfg$model$type,
     loss = mongo_data$result$loss
   ) %>%
-  na.omit %>%
-  filter(type != "DeepFactorEstimator" &
-           type != "GaussianProcessEstimator")
-
-res <-
-  # readLines(paste0("/var/tmp/", data_set, "_all/test/data.json"))
-  readLines("/home/mulderg/Work/plos1-m3/m3_yearly_all/test/data.json")
-# readLines("/home/mulderg/Work/plos1-m3/m3_monthly_all/test/data.json")
+  na.omit # %>%
+  # filter(!type %in% c("GaussianProcessEstimator", "DeepFactorEstimator")) #, "DeepAREstimator"))
 
 ####################################################################################
 # Timings
@@ -167,139 +177,172 @@ tibble(
 print(timings)
 
 ####################################################################################
+# Sampling
+
+model_mins <- data.frame(
+  model.type = character(),
+  number.models = integer(),
+  MASE = double(),
+  sMAPE = double()
+)
+for (model_type in sort(unique(model_type_loss$type))) {
+  model_type_loss %>%
+    filter(type == model_type) ->
+    submodel_type_loss
+
+  print(gsub("Estimator", "", model_type))
+  print(nrow(submodel_type_loss))
+  results_size <-
+    data.frame(
+      model.type = character(),
+      number.models = integer(),
+      MASE = double(),
+      sMAPE = double()
+    )
+  min_samples <- round(0.2 * nrow(submodel_type_loss))
+  for (num_samples in c(min_samples:nrow(submodel_type_loss))) {
+    col_idx <-
+      sample(submodel_type_loss$row.id,
+             size = num_samples,
+             replace = FALSE)
+    # print(col_idx)
+    # print(model_type_loss$type[col_idx])
+    errs <- ensemble_fcasts(col_idx)
+    result <-
+      data.frame(
+        model.type = model_type,
+        number.models = length(col_idx),
+        sMAPE   = errs[['sMAPE']],
+        MASE    = errs[['MASE']]
+      )
+
+    results_size <- rbind(results_size, result)
+
+    pct_complete <-
+      round(100 * (num_samples - min_samples) / (nrow(submodel_type_loss) - min_samples))
+    if (pct_complete %% 5 == 0) {
+      cat(paste0(pct_complete, "%."))
+    }
+  }
+  cat("\n")
+
+  # Find LOESS minima to estimate best number of models
+  fit <- loess(sMAPE ~ number.models, results_size)
+  fit_data <- predict(fit, results_size$number.models)
+  model_mins_idx <- which(fit_data == min(fit_data))
+  model_mins <- rbind(model_mins, results_size[model_mins_idx,])
+  print(results_size[model_mins_idx,])
+
+  gg_size <-
+    ggplot(results_size, aes(x = number.models, y = sMAPE)) +
+    geom_point(size = 0.1) +
+    geom_smooth(size = 0.5, se = FALSE) +
+    geom_vline(xintercept = results_size$number.models[model_mins_idx], colour = "red") +
+    xlim(0, 200) +
+    xlab(paste0(
+      "Number of ensembled ",
+      gsub("Estimator", "", model_type),
+      " models"
+    )) +
+    ggtitle(paste0(
+      "M3 ",
+      paste0(gsub("Estimator", "", model_type), collapse = "+"),
+      " forecast sMAPE versus number of ensembled models"
+    ))
+  print(gg_size)
+}
+
+####################################################################################
 # Model combinations
 
-# for (n in c(70, 80, 90, 100)) {
-# model_type_loss %>%
-# filter(type == "DeepAREstimator") ->
-# na.omit %>%
-# group_by(type) %>%
-# sample_n(n, replace = FALSE) ->
-# top_n(-n, loss) ->
-# top_frac(-n/100, loss) ->
-# best_models
-# print(best_models)
+print(model_mins)
+model_mins %>%
+  mutate(number.models = max(number.models) * min(sMAPE^2) / sMAPE^2) ->
+  model_mins_scaled
+print(model_mins_scaled)
 
-build_ensemble(model_type_loss) %>%
+build_ensemble(model_type_loss, model_mins_scaled) %>%
   na.omit %>%
-  mutate(model.types = gsub("Estimator", "", model.types)) %>%
+  mutate(model.type = gsub("Estimator", "", model.type)) %>%
   mutate(model.count.fact = factor(paste0(
     total.num.models, " [", model.type.count, "]"
   ))) %>%
   arrange(desc(sMAPE)) ->
   results_comb
 # results_comb$n.star.models <- rep(n, nrow(results_comb))
-print(tail(results_comb[, c("model.types", "total.num.models", "MASE", "sMAPE")], 100))
+print(tail(results_comb[, c("model.type", "total.num.models", "MASE", "sMAPE")], 100))
 #}
 
-gg_comb <-
-  results_comb %>%
-  mutate(model.count.fact = reorder(model.count.fact, total.num.models)) %>%
-  ggplot(aes(x = model.count.fact, y = sMAPE)) +
-  geom_violin() +
-  stat_summary(
-    fun.y = median,
-    geom = "point",
-    size = 1,
-    color = "red"
-  ) +
-  labs(title = "Forecast error versus number of ensembled combinations of models",
-       x = "Ensemble Size [Number of model types per ensemble]")
-
-if (interactive()) {
-  print(gg_comb)
-}
-
-####################################################################################
-# Sampling
-
-model_type_loss %>%
-  pull(row.id) ->
-  col_idx_all
-
-results_size <-
-  data.frame(
-    model.type = character(),
-    number.models = integer(),
-    MASE = double(),
-    sMAPE = double()
-  )
-for (num_samples in c(25:length(col_idx_all))) {
-  col_idx <- sample(col_idx_all, size = num_samples, replace = FALSE)
-  errs <- ensemble_fcasts(col_idx)
-  result <-
-    data.frame(
-      number.models = length(col_idx),
-      sMAPE   = errs[['sMAPE']],
-      MASE    = errs[['MASE']]
-    )
-  results_size <- rbind(results_size, result)
-}
-
-gg_size <-
-  ggplot(results_size, aes(x = number.models, y = sMAPE)) +
-  geom_point(size = 0.1) +
-  geom_smooth(size = 0.5, se = FALSE) +
-  # stat_regline_equation(
-  #   aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~~")),
-  #   label.x = 150,
-  #   label.y = 15.0,
-  #   colour = "red",
-  #   na.rm = TRUE
-  # )
-  labs(title = "Forecast error versus number of ensembled models",
-       x = "Number of models")
-
-if (!interactive()) {
-  options(width = 1000)
-
-  write.csv(
-    timings,
-    file = paste0(data_set, "-", version, "-timings.csv"),
-    row.names = FALSE,
-    quote = FALSE
-  )
-
-  write.csv(
-    results_comb,
-    file = paste0(data_set, "-", version, "-ensemble_combination_results.csv"),
-    row.names = FALSE,
-    quote = FALSE
-  )
-
-  ggsave(
-    paste0(data_set, "-", version, "-ensemble_combination_results.png"),
-    gg_comb,
-    width = 8,
-    height = 6
-  )
-
-  write.csv(
-    results_size,
-    file = paste0(data_set, "-", version, "-ensemble_err_vs_size.csv"),
-    row.names = FALSE,
-    quote = FALSE
-  )
-
-  ggsave(
-    paste0(data_set, "-", version, "-ensemble_err_vs_size.png"),
-    gg_size,
-    width = 8,
-    height = 6
-  )
-
-} else {
-  print(gg_size)
-}
-
-# for (model_type in uniq_model_types) {
-#   col_idx <- which(model_types == model_type)
-#   MASEs <- tibble(MASE = mongo_data$result$err_metrics$validate$MASE[col_idx])
-#   gg <-
-#     ggplot(MASEs, aes(x = MASE)) +
-#     geom_histogram(bins = 20) +
-#     labs(title = paste0("Distribution of ", model_type, " MASEs"),
-#          x = "MASE",
-#          y = "Count")
-#   print(gg)
+# gg_comb <-
+#   results_comb %>%
+#   mutate(model.count.fact = reorder(model.count.fact, total.num.models)) %>%
+#   ggplot(aes(x = model.count.fact, y = sMAPE)) +
+#   geom_violin() +
+#   stat_summary(
+#     fun.y = median,
+#     geom = "point",
+#     size = 1,
+#     color = "red"
+#   ) +
+#   # ylim(NA, 25.0) +
+#   labs(title = "Forecast error versus number of ensembled combinations of models",
+#        x = "Ensemble Size [Number of model types per ensemble]")
+#
+# if (interactive()) {
+#   print(gg_comb)
 # }
+
+
+
+# if (!interactive()) {
+#   options(width = 1000)
+#
+#   write.csv(
+#     timings,
+#     file = paste0(data_set, "-", version, "-timings.csv"),
+#     row.names = FALSE,
+#     quote = FALSE
+#   )
+#
+#   write.csv(
+#     results_comb,
+#     file = paste0(data_set, "-", version, "-ensemble_combination_results.csv"),
+#     row.names = FALSE,
+#     quote = FALSE
+#   )
+#
+#   ggsave(
+#     paste0(data_set, "-", version, "-ensemble_combination_results.png"),
+#     gg_comb,
+#     width = 8,
+#     height = 6
+#   )
+#
+#   write.csv(
+#     results_size,
+#     file = paste0(data_set, "-", version, "-ensemble_err_vs_size.csv"),
+#     row.names = FALSE,
+#     quote = FALSE
+#   )
+#
+#   ggsave(
+#     paste0(data_set, "-", version, "-ensemble_err_vs_size.png"),
+#     gg_size,
+#     width = 8,
+#     height = 6
+#   )
+# } else {
+#   print(gg_size)
+# }
+#
+# # for (model_type in uniq_model_types) {
+# #   col_idx <- which(model_types == model_type)
+# #   MASEs <- tibble(MASE = mongo_data$result$err_metrics$validate$MASE[col_idx])
+# #   gg <-
+# #     ggplot(MASEs, aes(x = MASE)) +
+# #     geom_histogram(bins = 20) +
+# #     labs(title = paste0("Distribution of ", model_type, " MASEs"),
+# #          x = "MASE",
+# #          y = "Count")
+# #   print(gg)
+# # }
