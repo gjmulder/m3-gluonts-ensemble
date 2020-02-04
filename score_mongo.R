@@ -69,7 +69,7 @@ ensemble_fcasts <- function(col_idx) {
               MASE = mean(mases)))
 }
 
-build_ensemble <- function(model_set, model_mins) {
+build_ensemble <- function(model_set, model_mins_scaled) {
   uniq_model_types <- sort(unique(model_set$type))
   # print(uniq_model_types)
 
@@ -86,7 +86,7 @@ build_ensemble <- function(model_set, model_mins) {
     for (idx2 in 1:nrow(comb)) {
       col_idx <- c()
       for (model_type in comb[idx2, ]) {
-        model_mins %>%
+        model_mins_scaled %>%
           filter(model.type == model_type) %>%
           pull(number.models) %>%
           as.integer ->
@@ -98,7 +98,7 @@ build_ensemble <- function(model_set, model_mins) {
           model_col_idx
 
         model_col_idx <-
-          sample(model_col_idx, size = num_models, replace = FALSE)
+          sample(model_col_idx, size = num_models, replace = TRUE)
         col_idx <- c(col_idx, model_col_idx)
       }
       errs <- ensemble_fcasts(col_idx)
@@ -121,8 +121,8 @@ build_ensemble <- function(model_set, model_mins) {
 # Get forecasts from MongoDB and test data from .json
 
 dataset_version <- Sys.getenv(c("DATASET", "VERSION"))
-data_set <- as.character(dataset_version[1]) # "m3_yearly"
-version <- as.character(dataset_version[2]) # "complete-v01"
+data_set <- "m3_other" # as.character(dataset_version[1]) # "m3_yearly"
+version <- "ensemble-v01" #as.character(dataset_version[2]) # "complete-v01"
 
 res <-
   # readLines(paste0("/var/tmp/", data_set, "_all/test/data.json"))
@@ -158,8 +158,8 @@ model_type_loss <-
     type = mongo_data$result$cfg$model$type,
     loss = mongo_data$result$loss
   ) %>%
-  na.omit %>%
-  filter(!type %in% c("GaussianProcessEstimator", "DeepFactorEstimator")) #, "DeepAREstimator"))
+  na.omit # %>%
+  # filter(!type %in% c("GaussianProcessEstimator", "DeepFactorEstimator")) #, "DeepAREstimator"))
 
 ####################################################################################
 # Timings
@@ -178,6 +178,14 @@ print(timings)
 
 ####################################################################################
 # Sampling
+
+results_size_all <-
+  data.frame(
+    model.type = character(),
+    number.models = integer(),
+    MASE = double(),
+    sMAPE = double()
+  )
 
 model_mins <- data.frame(
   model.type = character(),
@@ -199,7 +207,7 @@ for (model_type in sort(unique(model_type_loss$type))) {
       MASE = double(),
       sMAPE = double()
     )
-  min_samples <- 25
+  min_samples <- round(0.2 * nrow(submodel_type_loss))
   for (num_samples in c(min_samples:nrow(submodel_type_loss))) {
     col_idx <-
       sample(submodel_type_loss$row.id,
@@ -217,7 +225,6 @@ for (model_type in sort(unique(model_type_loss$type))) {
       )
 
     results_size <- rbind(results_size, result)
-
     pct_complete <-
       round(100 * (num_samples - min_samples) / (nrow(submodel_type_loss) - min_samples))
     if (pct_complete %% 5 == 0) {
@@ -231,35 +238,73 @@ for (model_type in sort(unique(model_type_loss$type))) {
   fit_data <- predict(fit, results_size$number.models)
   model_mins_idx <- which(fit_data == min(fit_data))
   model_mins <- rbind(model_mins, results_size[model_mins_idx,])
+  print(results_size[model_mins_idx,])
 
-  gg_size <-
-    ggplot(results_size, aes(x = number.models, y = sMAPE)) +
+  results_size_all <- rbind(results_size_all, results_size)
+
+  gg_size_mod <-
+    ggplot(results_size_all, aes(x = number.models, y = sMAPE)) +
     geom_point(size = 0.1) +
     geom_smooth(size = 0.5, se = FALSE) +
-    geom_vline(xintercept = results_size$number.models[model_mins_idx], colour = "red") +
-    xlim(0, 200) +
     xlab(paste0(
-      "Number of ensembled ",
-      gsub("Estimator", "", model_type),
-      " models"
+      "Number of ensembled models"
     )) +
-    ggtitle(paste0(
-      "M3 ",
-      paste0(gsub("Estimator", "", model_type), collapse = "+"),
-      " forecast sMAPE versus number of ensembled models"
-    ))
-  print(gg_size)
+    ggtitle("M3 forecast sMAPE versus number of ensembled models") +
+    facet_wrap(model.type ~ ., scales = "free_y")
+  print(gg_size_mod)
 }
+
+min_samples <- round(0.2 * nrow(model_type_loss))
+for (num_samples in c(min_samples:nrow(model_type_loss))) {
+  col_idx <-
+    sample(model_type_loss$row.id,
+           size = num_samples,
+           replace = FALSE)
+  # print(col_idx)
+  # print(model_type_loss$type[col_idx])
+  errs <- ensemble_fcasts(col_idx)
+  result <-
+    data.frame(
+      model.type = model_type,
+      number.models = length(col_idx),
+      sMAPE   = errs[['sMAPE']],
+      MASE    = errs[['MASE']]
+    )
+
+  results_size <- rbind(results_size, result)
+  pct_complete <-
+    round(100 * (num_samples - min_samples) / (nrow(model_type_loss) - min_samples))
+  if (pct_complete %% 5 == 0) {
+    cat(paste0(pct_complete, "%."))
+  }
+}
+cat("\n")
+gg_size <-
+  ggplot(results_size, aes(x = number.models, y = sMAPE)) +
+  geom_point(size = 0.1) +
+  geom_smooth(size = 0.5, se = FALSE) +
+  xlab("Number of ensembled models") +
+  ggtitle("M3 forecast sMAPE versus number of ensembled models")
+print(gg_size)
 
 ####################################################################################
 # Model combinations
 
-model_mins %>%
-  mutate(number.models = min(.$number.models) * min(.$sMAPE)^2 / sMAPE^2) ->
-  model_mins
-print(model_mins)
+results_size_all <-
+  data.frame(
+    model.type = character(),
+    number.models = integer(),
+    MASE = double(),
+    sMAPE = double()
+  )
 
-build_ensemble(model_type_loss, model_mins) %>%
+print(model_mins)
+model_mins %>%
+  mutate(number.models = mean(number.models) * min(sMAPE) / sMAPE) ->
+  model_mins_scaled
+print(model_mins_scaled)
+
+build_ensemble(model_type_loss, model_mins_scaled) %>%
   na.omit %>%
   mutate(model.type = gsub("Estimator", "", model.type)) %>%
   mutate(model.count.fact = factor(paste0(
