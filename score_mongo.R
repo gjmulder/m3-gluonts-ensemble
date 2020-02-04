@@ -7,10 +7,11 @@ library(dplyr)
 library(ggplot2)
 
 options(width = 160)
+set.seed(42)
 
-dataset_version <- Sys.getenv(c("DATASET", "VERSION"))
-data_set <- as.character(dataset_version[1])
-version <- as.character(dataset_version[2])
+# dataset_version <- Sys.getenv(c("DATASET", "VERSION"))
+data_set <- "m3_monthly"
+version <- "final_rnd_6-18_mon"
 
 if (grepl("monthly", data_set)) {
   frq = 12
@@ -38,7 +39,7 @@ gc()
 model_types <- mydata$result$cfg$model$type
 res <-
   # readLines(paste0("/var/tmp/", data_set, "_all/test/data.json"))
-  readLines("/home/mulderg/Work/plos1-m3/m3_monthly_all_test/test/data.json")
+  readLines("/home/mulderg/Work/plos1-m3/m3_monthly_all_1045/test/data.json")
 
 smape_cal <- function(outsample, forecasts) {
   #Used to estimate sMAPE
@@ -65,10 +66,13 @@ mase_cal <- function(insample, outsample, forecasts, frq) {
   return(mase)
 }
 
-ensemble_fcasts <- function(col_idx) {
+ensemble_fcasts <- function(col_idx, model_type_comb) {
   fcasts_df <- mydata$result$err_metrics$y_hats[col_idx,]
   smapes <- c()
   mases <- c()
+
+  smapes_mtx <- matrix(nrow = length(fcasts_df), ncol = 18)
+  mases_mtx <- smapes_mtx
 
   for (idx in c(1:length(fcasts_df))) {
     # print(idx)
@@ -81,10 +85,18 @@ ensemble_fcasts <- function(col_idx) {
       head(test_row$target, length(test_row$target) - length(y_hat))
     y_test <- tail(test_row$target, length(y_hat))
 
-    smapes <- c(smapes, smape_cal(y_test, y_hat))
-    mases <- c(mases, mase_cal(in_sample, y_test, y_hat, frq))
+    smape_err <- smape_cal(y_test, y_hat)
+    mase_err <- mase_cal(in_sample, y_test, y_hat, frq)
+
+    smapes_mtx[idx, ] <- smape_err
+    mases_mtx[idx, ] <- mase_err
+
+    smapes <- c(smapes, smape_err)
+    mases <- c(mases, mase_err)
   }
 
+  write.csv(colMeans(smapes_mtx), paste0(model_type_comb, "_smapes.csv"), row.names=FALSE)
+  write.csv(colMeans(mases_mtx), paste0(model_type_comb, "_mases.csv"), row.names=FALSE)
   return(list(sMAPE = mean(smapes),
               MASE = mean(mases)))
 }
@@ -105,19 +117,21 @@ for (idx1 in 1:length(uniq_model_types)) {
     col_idx <- c()
     for (model_type in comb[idx2,]) {
       model_col_idx <- which(model_type == model_types)
-      # col_idx <- c(col_idx, sample(model_col_idx, 50))
-      col_idx <- c(col_idx, model_col_idx)
+      col_idx <- c(col_idx, sample(model_col_idx, 50))
+      # col_idx <- c(col_idx, model_col_idx)
     }
-    errs <- ensemble_fcasts(col_idx)
+    model_type_comb <- paste0(comb[idx2,], collapse = "+")
+    errs <- ensemble_fcasts(col_idx, model_type_comb)
     result <-
       data.frame(
-        model.type = paste0(comb[idx2,], collapse = "+"),
+        model.type = model_type_comb,
         number.models = length(col_idx),
         MASE    = errs[['MASE']],
         sMAPE   = errs[['sMAPE']]
       )
     results <- rbind(results, result)
   }
+  print(results)
 }
 write.csv(results,
           file = "ensemble_combination_results.csv",
@@ -125,58 +139,58 @@ write.csv(results,
           quote = FALSE)
 print(results)
 
-# Sampling
-# col_idx_all <- which(!is.na(model_types) & model_types == "TransformerEstimator")
-col_idx_all <-
-  which(!is.na(model_types))
-results <-
-  data.frame(
-    model.type = character(),
-    number.models = integer(),
-    MASE = double(),
-    sMAPE = double()
-  )
-for (num_samples in c(25:length(col_idx_all))) {
-  col_idx <- sample(col_idx_all, size = num_samples)
-  errs <- ensemble_fcasts(col_idx)
-  result <-
-    data.frame(number.models = length(col_idx),
-               sMAPE   = errs[['sMAPE']],
-               MASE    = errs[['MASE']])
-
-  results <- rbind(results, result)
-}
-write.csv(results,
-          file = "ensemble_err_vs_size.csv",
-          row.names = FALSE,
-          quote = FALSE)
-print(results)
-
-gg <-
-  ggplot(results, aes(x = number.models, y = sMAPE)) +
-  geom_point(size = 0.1) +
-  geom_smooth(size = 0.5, se = FALSE) +
-  labs(title = "Forecast MASE versus number of ensembled models",
-       x = "Number of models",
-       y = "sMAPE")
-ggsave("ensemble_err_vs_size.png", gg, width = 8, height = 6)
-
-# Timings
-tibble(
-  model.type = model_types,
-  book.time = ymd_hms(mydata$book_time, tz = "EET"),
-  refresh.time = ymd_hms(mydata$refresh_time, tz = "EET")
-) %>%
-  mutate(duration = refresh.time - book.time) %>%
-  group_by(model.type) %>%
-  summarise(mean(duration)) ->
-  timings
-
-write.csv(timings,
-          file = "timings.csv",
-          row.names = FALSE,
-          quote = FALSE)
-print(timings)
+# # Sampling
+# # col_idx_all <- which(!is.na(model_types) & model_types == "TransformerEstimator")
+# col_idx_all <-
+#   which(!is.na(model_types))
+# results <-
+#   data.frame(
+#     model.type = character(),
+#     number.models = integer(),
+#     MASE = double(),
+#     sMAPE = double()
+#   )
+# for (num_samples in c(25:length(col_idx_all))) {
+#   col_idx <- sample(col_idx_all, size = num_samples)
+#   errs <- ensemble_fcasts(col_idx)
+#   result <-
+#     data.frame(number.models = length(col_idx),
+#                sMAPE   = errs[['sMAPE']],
+#                MASE    = errs[['MASE']])
+#
+#   results <- rbind(results, result)
+# }
+# write.csv(results,
+#           file = "ensemble_err_vs_size.csv",
+#           row.names = FALSE,
+#           quote = FALSE)
+# print(results)
+#
+# gg <-
+#   ggplot(results, aes(x = number.models, y = sMAPE)) +
+#   geom_point(size = 0.1) +
+#   geom_smooth(size = 0.5, se = FALSE) +
+#   labs(title = "Forecast MASE versus number of ensembled models",
+#        x = "Number of models",
+#        y = "sMAPE")
+# ggsave("ensemble_err_vs_size.png", gg, width = 8, height = 6)
+#
+# # Timings
+# tibble(
+#   model.type = model_types,
+#   book.time = ymd_hms(mydata$book_time, tz = "EET"),
+#   refresh.time = ymd_hms(mydata$refresh_time, tz = "EET")
+# ) %>%
+#   mutate(duration = refresh.time - book.time) %>%
+#   group_by(model.type) %>%
+#   summarise(mean(duration)) ->
+#   timings
+#
+# write.csv(timings,
+#           file = "timings.csv",
+#           row.names = FALSE,
+#           quote = FALSE)
+# print(timings)
 
 # for (model_type in uniq_model_types) {
 #   col_idx <- which(model_types == model_type)
