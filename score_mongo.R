@@ -254,7 +254,7 @@ for (model_type in sort(unique(model_type_loss$type))) {
   print(gg_size_mod)
 }
 
-min_samples <- round(0.2 * nrow(model_type_loss))
+min_samples <- 10
 for (num_samples in c(min_samples:nrow(model_type_loss))) {
   col_idx <-
     sample(model_type_loss$row.id,
@@ -281,11 +281,18 @@ for (num_samples in c(min_samples:nrow(model_type_loss))) {
 cat("\n")
 gg_size <-
   ggplot(results_size, aes(x = number.models, y = sMAPE)) +
+  ylim(4.3, 4.5) +
   geom_point(size = 0.1) +
   geom_smooth(size = 0.5, se = FALSE) +
   xlab("Number of ensembled models") +
   ggtitle("M3 forecast sMAPE versus number of ensembled models")
 print(gg_size)
+  ggsave(
+    paste0(data_set, "-", version, "-ensemble_err_vs_size.png"),
+    gg_size,
+    width = 8,
+    height = 6
+  )
 
 ####################################################################################
 # Model combinations
