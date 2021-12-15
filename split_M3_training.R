@@ -4,7 +4,7 @@
 # library(anytime)
 # library(xts)
 
-library(M4comp2018)
+library(M3comp2018)
 library(lubridate)
 library(jsonlite)
 library(forecast)
@@ -19,11 +19,11 @@ options(width = 1024)
 
 if (interactive()) {
   prop_tt <- NA # 0.1
-  # num4_cores <- 4
+  # num3_cores <- 4
 } else
 {
   prop_tt <- NA
-  # num4_cores <- 16
+  # num3_cores <- 16
 }
 # use_parallel <- TRUE #is.na(prop_tt)
 
@@ -31,13 +31,13 @@ if (interactive()) {
 # Preprocess M data ####
 
 if (is.na(prop_tt)) {
-  m4_data <- M4
+  m3_data <- M3
 } else {
-  m4_data <- sample(M4, prop_tt * length(M4))
+  m3_data <- sample(M3, prop_tt * length(M3))
 }
 
-# Process m4-info start dates
-m4_info_df <- read_csv("M4-info.csv")
+# Process m3-info start dates
+m3_info_df <- read_csv("M3-info.csv")
 
 # "1750-01-01 00:00:00"
 fix_start <- function(date_str) {
@@ -144,80 +144,80 @@ tt_to_json <- function(idx, tt_list, type_list, start_date_list) {
 #     return(df)
 # }
 
-process_period <- function(period, m4_data, validation_mode) {
+process_period <- function(period, m3_data, validation_mode) {
   print(period)
-  m4_period_data <- keep(m4_data, function(tt) tt$period == period)
+  m3_period_data <- keep(m3_data, function(tt) tt$period == period)
 
-  # len_m4_period <-
-  #   unlist(lapply(m4_period_data, function(tt)
+  # len_m3_period <-
+  #   unlist(lapply(m3_period_data, function(tt)
   #     return(length(tt$x))))
-  # print(ggplot(tibble(tt_length = len_m4_period)) + geom4_histogram(aes(x = tt_length), bins=100) + ggtitle(period) + scale_x_log10())
+  # print(ggplot(tibble(tt_length = len_m3_period)) + geom3_histogram(aes(x = tt_length), bins=100) + ggtitle(period) + scale_x_log10())
 
   # if (use_parallel) {
-  #   m4_data_x_deseason <- mclapply(1:length(m4_data_x), function(idx)
-  #     return(deseasonalise(m4_data_x[[idx]], m4_horiz[[idx]])), mc.cores = num4_cores)
+  #   m3_data_x_deseason <- mclapply(1:length(m3_data_x), function(idx)
+  #     return(deseasonalise(m3_data_x[[idx]], m3_horiz[[idx]])), mc.cores = num3_cores)
   # } else {
-  #   m4_data_x_deseason <- lapply(1:length(m4_data_x), function(idx)
-  #     return(deseasonalise(m4_data_x[[idx]], m4_horiz[[idx]])))
+  #   m3_data_x_deseason <- lapply(1:length(m3_data_x), function(idx)
+  #     return(deseasonalise(m3_data_x[[idx]], m3_horiz[[idx]])))
   # }
 
-  m4_st <-
-    lapply(m4_period_data, function(tt)
+  m3_st <-
+    lapply(m3_period_data, function(tt)
       return(tt$st))
 
-  m4_type_str <-
-    lapply(m4_period_data, function(tt)
+  m3_type_str <-
+    lapply(m3_period_data, function(tt)
       return(tt$type))
-  m4_type_levels <-
-    levels(as.factor(unlist(m4_type_str)))
-  m4_type <-
-    lapply(m4_type_str, function(type)
-      return(factor(type, levels = m4_type_levels)))
+  m3_type_levels <-
+    levels(as.factor(unlist(m3_type_str)))
+  m3_type <-
+    lapply(m3_type_str, function(type)
+      return(factor(type, levels = m3_type_levels)))
 
-  m4_horiz <-
-    lapply(m4_period_data, function(tt)
+  m3_horiz <-
+    lapply(m3_period_data, function(tt)
       return(tt$h))
 
-  m4_start_date <-
-    lapply(1:length(m4_st), function(idx)
-      return(m4_info_df$StartingDate[m4_info_df$M4id == m4_st[[idx]]]))
+  m3_start_date <-
+    lapply(1:length(m3_st), function(idx)
+      return(m3_info_df$StartingDate[m3_info_df$M3id == m3_st[[idx]]]))
 
   ###########################################################################
   # Create time series depending on validation_mode ####
 
   if (validation_mode) {
     dirname <-
-      paste0("m4_",
+      paste0("m3_",
              tolower(period),
              '/')
     dir.create(dirname)
 
     # train - h
-    m4_train <-
-      lapply(m4_period_data, function(tt)
+    m3_train <-
+      lapply(m3_period_data, function(tt)
         return(subset(tt$x, end = (
           length(tt$x) - tt$h
         ))))
 
     # train + test
-    m4_test <-
-      lapply(m4_period_data, function(tt)
+    m3_test <-
+      lapply(m3_period_data, function(tt)
         return(tt$x))
   } else {
     dirname <-
-      paste0("m4_",
+      paste0("m3_",
              tolower(period),
              '_all/')
     dir.create(dirname)
 
     # train
-    m4_train <-
-      lapply(m4_period_data, function(tt)
+    m3_train <-
+      lapply(m3_period_data, function(tt)
         return(tt$x))
 
     # train + test
-    m4_test <-
-      lapply(m4_period_data, function(tt)
+    m3_test <-
+      lapply(m3_period_data, function(tt)
         return(ts(data = c(tt$x, tt$xx), start = start(tt$x), frequency = frequency(tt$x))))
   }
 
@@ -225,22 +225,22 @@ process_period <- function(period, m4_data, validation_mode) {
   # Write JSON train and test data ####
 
   json <-
-    lapply(1:length(m4_train),
+    lapply(1:length(m3_train),
            tt_to_json,
-           m4_train,
-           m4_type,
-           m4_start_date)
+           m3_train,
+           m3_type,
+           m3_start_date)
   dir.create(paste0(dirname, "train"))
   sink(paste0(dirname, "train/data.json"))
   lapply(json, cat)
   sink()
 
   json <-
-    lapply(1:length(m4_test),
+    lapply(1:length(m3_test),
            tt_to_json,
-           m4_test,
-           m4_type,
-           m4_start_date)
+           m3_test,
+           m3_type,
+           m3_start_date)
   dir.create(paste0(dirname, "test"))
   sink(paste0(dirname, "test/data.json"))
   lapply(json, cat)
@@ -250,15 +250,15 @@ process_period <- function(period, m4_data, validation_mode) {
   # # Write csv train and test data ####
   #
   # dfs <-
-  #   lapply(1:length(m4_test),
+  #   lapply(1:length(m3_test),
   #          tt_to_csv,
-  #          m4_test,
-  #          m4_type,
-  #          m4_horiz)
+  #          m3_test,
+  #          m3_type,
+  #          m3_horiz)
   # df <-  do.call(rbind, dfs)
   # write.csv(df, paste0("windowed37_data.csv"), row.names=FALSE)
 
-  return(length(m4_train))
+  return(length(m3_train))
 }
 
 # # Size of in-sample window for generating csv data
@@ -268,9 +268,9 @@ process_period <- function(period, m4_data, validation_mode) {
 validation_mode <- FALSE
 
 # print("!!!! DOES NOT SUPPORT HOURLY AS get_date() RETURNS DATE STRING, NOT 'yyyy-mm-dd HH:MM:SS' !!!!")
-# periods <- as.vector(levels(m4_data[[1]]$period))
+# periods <- as.vector(levels(m3_data[[1]]$period))
 periods <- c("Monthly")
-res <- unlist(lapply(periods, process_period, m4_data, validation_mode))
+res <- unlist(lapply(periods, process_period, m3_data, validation_mode))
 names(res) <- periods
 print(res)
 print(sum(res))
